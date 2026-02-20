@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Kimpintay Private - No Limits</title>
+    <title>Kimpintay - Private Account</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
@@ -16,8 +16,9 @@
         .in { background: #22222e; align-self: flex-start; }
         .out { background: #3d266e; align-self: flex-end; }
         .box-ui { padding: 15px; margin: 15px; background: rgba(123, 97, 255, 0.1); border-radius: 12px; border: 1px solid rgba(123, 97, 255, 0.2); }
-        input { width: calc(100% - 24px); background: #1e1e26; border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; outline: none; }
-        button { background: var(--p); border: none; color: white; padding: 10px; border-radius: 10px; cursor: pointer; }
+        input { width: calc(100% - 24px); background: #1e1e26; border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; outline: none; margin-bottom: 8px; }
+        button { background: var(--p); border: none; color: white; padding: 10px 20px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; }
+        .contact { padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; }
     </style>
 </head>
 <body>
@@ -26,65 +27,78 @@
     <div class="side">
         <div style="padding: 25px; font-size: 1.5rem; font-weight: bold; color: var(--p);">KIMPINTAY</div>
         
-        <div id="auth-area" class="box-ui">
-            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">ВАШ НИК:</div>
-            <input type="text" id="my-nick" placeholder="Напиши ник и Enter...">
-            <div id="st" style="font-size: 0.65rem; color: #ff4444; margin-top: 5px;">● Оффлайн</div>
+        <div id="auth-form" class="box-ui">
+            <div id="auth-title" style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">ВХОД В АККАУНТ</div>
+            <input type="text" id="my-nick" placeholder="Никнейм">
+            <input type="password" id="my-pass" placeholder="Пароль">
+            <button onclick="login()">Войти / Создать</button>
+            <div id="st" style="font-size: 0.65rem; color: #ff4444; margin-top: 8px;">● Оффлайн</div>
         </div>
 
         <div id="search-area" class="box-ui" style="display: none;">
-            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">КОМУ ПИШЕМ:</div>
+            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">НАЙТИ ДРУГА:</div>
             <input type="text" id="friend-nick" placeholder="Ник друга...">
-            <div style="font-size: 0.6rem; color: #555; margin-top: 10px;">Совет: чтобы соединиться, ники должны быть одинаковыми в полях.</div>
+            <div style="font-size: 0.7rem; color: #444; margin-top: 10px;">ВАШИ ЧАТЫ:</div>
+            <div id="contacts-list"></div>
         </div>
     </div>
 
     <div class="main">
-        <div style="padding: 15px 25px; border-bottom: 1px solid #222; font-weight: bold;" id="chat-h">Войдите в систему</div>
+        <div style="padding: 15px 25px; border-bottom: 1px solid #222; font-weight: bold;" id="chat-h">Авторизуйтесь</div>
         <div class="msgs" id="chat-box"></div>
         <div style="padding: 15px; display: flex; gap: 10px; background: #16161e;">
-            <input type="text" id="msg" style="flex:1;" placeholder="Зашифрованное сообщение...">
-            <button onclick="sendMsg()">➤</button>
+            <input type="text" id="msg" style="flex:1; margin:0;" placeholder="Зашифрованное сообщение...">
+            <button onclick="sendMsg()" style="width:auto;">➤</button>
         </div>
     </div>
 </div>
 
 <script>
-    let peer, conn, myId;
+    let peer, conn, myId, myPass;
     const box = document.getElementById('chat-box');
 
-    // Ключ шифрования
-    function getS(i1, i2) { return [i1, i2].sort().join('_secure_'); }
+    function getS(i1, i2) { return [i1, i2].sort().join(myPass); }
 
-    // ВХОД С ПРОВЕРКОЙ
-    document.getElementById('my-nick').onkeypress = (e) => {
-        if (e.key === 'Enter' && e.target.value) {
-            let nick = e.target.value.trim().toLowerCase();
-            // Чтобы не было ошибки "занят", добавляем микро-рандом если надо
-            peer = new Peer(nick + "-" + Math.floor(Math.random() * 100));
-            
-            peer.on('open', (id) => {
-                myId = id;
-                document.getElementById('st').innerText = "● В СЕТИ КАК: " + id;
-                document.getElementById('st').style.color = "#00ff88";
-                document.getElementById('auth-area').style.opacity = "0.5";
-                document.getElementById('search-area').style.display = "block";
-                document.getElementById('chat-h').innerText = "Готов к подключению";
-            });
+    function login() {
+        const nick = document.getElementById('my-nick').value.trim().toLowerCase();
+        const pass = document.getElementById('my-pass').value.trim();
 
-            peer.on('connection', (c) => { conn = c; setup(); });
-            peer.on('error', (err) => {
-                // Если ник занят, пробуем еще раз автоматически
-                console.log("Reconnecting...");
-            });
+        if(!nick || !pass) return alert("Введите ник и пароль!");
+
+        // Простая проверка "пароля" через LocalStorage
+        const savedPass = localStorage.getItem('pass_' + nick);
+        if(savedPass && savedPass !== pass) {
+            return alert("Неверный пароль для этого ника!");
         }
-    };
+        if(!savedPass) {
+            localStorage.setItem('pass_' + nick, pass);
+            alert("Аккаунт создан!");
+        }
 
-    // ПОИСК ДРУГА
+        myId = nick;
+        myPass = pass;
+
+        // Подключаемся к сети. Добавляем дату, чтобы избежать ошибки "занят" при перезагрузке
+        peer = new Peer(myId + "-" + new Date().getMinutes());
+
+        peer.on('open', (id) => {
+            document.getElementById('st').innerText = "● В СЕТИ: " + id;
+            document.getElementById('st').style.color = "#00ff88";
+            document.getElementById('auth-form').style.opacity = "0.5";
+            document.getElementById('search-area').style.display = "block";
+            document.getElementById('chat-h').innerText = "Аккаунт: " + myId;
+            render();
+        });
+
+        peer.on('connection', (c) => { conn = c; setup(); });
+        peer.on('error', (err) => {
+            alert("Ошибка сети. Попробуйте сменить ник или подождать.");
+        });
+    }
+
     document.getElementById('friend-nick').onkeypress = (e) => {
         if (e.key === 'Enter' && e.target.value) {
             if(conn) conn.close();
-            // Друг должен ввести ПОЛНЫЙ ID (с цифрами, если они есть)
             conn = peer.connect(e.target.value.trim().toLowerCase());
             setup();
         }
@@ -94,14 +108,14 @@
         conn.on('open', () => {
             document.getElementById('chat-h').innerText = "Чат с: " + conn.peer;
             box.innerHTML = "";
-            add("Защита AES-256 активирована", "in");
+            add("Безопасный канал открыт", "in");
         });
         conn.on('data', (d) => {
             const k = getS(myId, conn.peer);
             try {
                 const dec = CryptoJS.AES.decrypt(d, k).toString(CryptoJS.enc.Utf8);
                 if(dec) add(dec, "in");
-            } catch(e) { }
+            } catch(e) { add("Ошибка: неверный ключ шифрования!", "in"); }
         });
     }
 
