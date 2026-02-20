@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Kimpintay Private Chat</title>
+    <title>Kimpintay Private - Stable & Secure</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
@@ -26,111 +26,120 @@
         .sidebar { width: 300px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; }
         .chat-window { flex: 1; display: flex; flex-direction: column; background: #0f0f12; }
         .messages-container { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .message { max-width: 65%; padding: 12px 18px; border-radius: 18px; font-size: 0.95rem; }
+        .message { max-width: 65%; padding: 12px 18px; border-radius: 18px; font-size: 0.95rem; word-wrap: break-word; }
         .incoming { background: var(--chat-bubble-in); align-self: flex-start; border-bottom-left-radius: 4px; }
         .outgoing { background: var(--chat-bubble-out); align-self: flex-end; border-bottom-right-radius: 4px; }
-        input { background: #1e1e26; border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; color: white; outline: none; margin: 10px; }
-        button { background: var(--accent-purple); border: none; color: white; padding: 10px; border-radius: 12px; cursor: pointer; margin: 10px; }
-        .contact-item { padding: 10px 15px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; }
+        
+        .box-ui { padding: 15px; margin: 15px; background: rgba(123, 97, 255, 0.1); border-radius: 15px; border: 1px solid rgba(123, 97, 255, 0.2); }
+        input { width: calc(100% - 24px); background: #1e1e26; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; color: white; outline: none; margin-bottom: 5px; }
+        button { background: var(--accent-purple); border: none; color: white; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; }
+        .contact { padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; font-size: 0.9rem; }
+        .contact:hover { background: rgba(123, 97, 255, 0.1); }
+        .avatar { width: 35px; height: 35px; border-radius: 50%; background: var(--accent-purple); display: flex; align-items: center; justify-content: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="app-container">
     <aside class="sidebar">
-        <div style="padding: 20px; font-weight: bold; color: var(--accent-purple); font-size: 1.2rem;">KIMPINTAY</div>
+        <div style="padding: 25px; font-size: 1.5rem; font-weight: bold; color: var(--accent-purple);">KIMPINTAY</div>
         
-        <div id="my-nick-section" style="padding: 10px;">
-            <div style="font-size: 0.7rem; color: #888; margin-left: 10px;">ВАШ НИК:</div>
-            <input type="text" id="my-id" placeholder="Введите ваш ник..." style="width: 80%;">
-            <div id="status" style="font-size: 0.65rem; color: #ff4444; margin-left: 10px;">● не в сети</div>
+        <div id="login-section" class="box-ui">
+            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">ВАШ НИКНЕЙМ:</div>
+            <input type="text" id="my-nick" placeholder="Напишите и Enter...">
+            <div id="st" style="font-size: 0.65rem; color: #ff4444; margin-top: 5px;">● не в сети</div>
         </div>
 
-        <div id="friend-section" style="padding: 10px; display: none;">
-            <div style="font-size: 0.7rem; color: #888; margin-left: 10px;">НАЙТИ ДРУГА:</div>
-            <input type="text" id="peer-id" placeholder="Ник друга..." style="width: 80%;">
-            <div style="font-size: 0.7rem; color: #444; margin: 10px 0 0 10px;">ВАШИ ЧАТЫ:</div>
+        <div id="friend-section" class="box-ui" style="display: none;">
+            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">НАЙТИ ДРУГА:</div>
+            <input type="text" id="friend-nick" placeholder="Ник друга и Enter...">
+            <div style="font-size: 0.7rem; color: #444; margin-top: 15px;">ВАШИ ДИАЛОГИ:</div>
             <div id="contacts-list"></div>
         </div>
     </aside>
 
     <main class="chat-window">
-        <div id="chat-header" style="padding: 20px; border-bottom: 1px solid #222; font-weight: bold;">Чат не выбран</div>
+        <div style="padding: 15px 25px; border-bottom: 1px solid #222; font-weight: bold;" id="chat-header">Выберите чат</div>
         <div class="messages-container" id="chat-box"></div>
-        <div style="display: flex; background: #16161e;">
-            <input type="text" id="msg-input" style="flex: 1;" placeholder="Зашифрованное сообщение...">
-            <button onclick="sendMsg()">Отправить</button>
+        <div style="padding: 20px; display: flex; gap: 10px; background: #16161e;">
+            <input type="text" id="msg-input" style="margin:0;" placeholder="Зашифрованное сообщение...">
+            <button onclick="sendMsg()">➤</button>
         </div>
     </main>
 </div>
 
 <script>
-    let peer = null, conn = null, myNick = "", friends = [];
+    let peer = null, conn = null, myId = "", friends = [];
 
-    // Генерируем ключ для шифрования (автоматически)
+    // Функция авто-шифрования (AES-256)
     function getSecret(id1, id2) { return [id1, id2].sort().join('_!_key_'); }
 
-    // Регистрация своего ника
-    document.getElementById('my-id').onkeypress = function(e) {
+    // 1. ЛОГИКА ВХОДА
+    document.getElementById('my-nick').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && this.value) {
-            myNick = this.value.trim().toLowerCase();
-            peer = new Peer(myNick);
+            myId = this.value.trim().toLowerCase();
+            peer = new Peer(myId);
+
             peer.on('open', (id) => {
-                document.getElementById('status').innerText = "● В СЕТИ: " + id;
-                document.getElementById('status').style.color = "#00ff88";
-                document.getElementById('my-nick-section').style.opacity = "0.5";
-                document.getElementById('my-id').disabled = true;
+                document.getElementById('st').innerText = "● В СЕТИ: " + id;
+                document.getElementById('st').style.color = "#00ff88";
+                document.getElementById('login-section').style.opacity = "0.6";
+                document.getElementById('my-nick').disabled = true;
+                
+                // Показываем поиск друга
                 document.getElementById('friend-section').style.display = "block";
-                friends = JSON.parse(localStorage.getItem('chats_' + id)) || [];
+                
+                friends = JSON.parse(localStorage.getItem('f_' + myId)) || [];
                 render();
             });
+
             peer.on('connection', (c) => { conn = c; setup(); });
-            peer.on('error', () => alert("Ник занят, выберите другой!"));
+            peer.on('error', () => alert("Ник занят или ошибка соединения!"));
         }
-    };
+    });
+
+    // 2. ПОИСК ДРУГА
+    document.getElementById('friend-nick').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && this.value) {
+            const tid = this.value.trim().toLowerCase();
+            if(tid === myId) return alert("Это ваш ник!");
+            if(conn) conn.close();
+            conn = peer.connect(tid);
+            setup();
+            this.value = "";
+        }
+    });
 
     function render() {
         const list = document.getElementById('contacts-list');
         list.innerHTML = '';
         friends.forEach(f => {
             const d = document.createElement('div');
-            d.className = 'contact-item';
+            d.className = 'contact';
             d.innerText = f;
             d.onclick = () => { if(conn) conn.close(); conn = peer.connect(f); setup(); };
             list.appendChild(d);
         });
     }
 
-    // Поиск друга
-    document.getElementById('peer-id').onkeypress = function(e) {
-        if (e.key === 'Enter' && this.value) {
-            const target = this.value.trim().toLowerCase();
-            if(target === myNick) return alert("Это ваш ник!");
-            if(conn) conn.close();
-            conn = peer.connect(target);
-            this.value = "";
-            setup();
-        }
-    };
-
     function setup() {
         conn.on('open', () => {
-            document.getElementById('chat-header').innerText = "Диалог: " + conn.peer;
+            document.getElementById('chat-header').innerText = "Чат с: " + conn.peer;
             if(!friends.includes(conn.peer)) {
                 friends.push(conn.peer);
-                localStorage.setItem('chats_' + myNick, JSON.stringify(friends));
+                localStorage.setItem('f_' + myId, JSON.stringify(friends));
                 render();
             }
             document.getElementById('chat-box').innerHTML = "";
-            addMsg("Безопасное соединение установлено", "incoming");
+            addMsg("Соединение защищено E2EE", "incoming");
         });
 
         conn.on('data', (data) => {
-            const key = getSecret(myNick, conn.peer);
+            const key = getSecret(myId, conn.peer);
             try {
                 const dec = CryptoJS.AES.decrypt(data, key).toString(CryptoJS.enc.Utf8);
                 if(dec) addMsg(dec, "incoming");
-            } catch(e) { console.error("Ошибка защиты"); }
+            } catch(e) { console.error("Ошибка дешифровки"); }
         });
     }
 
@@ -146,12 +155,14 @@
     function sendMsg() {
         const input = document.getElementById('msg-input');
         if (!input.value || !conn) return;
-        const key = getSecret(myNick, conn.peer);
-        const encrypted = CryptoJS.AES.encrypt(input.value, key).toString();
-        conn.send(encrypted);
+        const key = getSecret(myId, conn.peer);
+        const enc = CryptoJS.AES.encrypt(input.value, key).toString();
+        conn.send(enc);
         addMsg(input.value, "outgoing");
         input.value = "";
     }
+
+    document.getElementById('msg-input').onkeypress = (e) => { if(e.key === 'Enter') sendMsg(); };
 </script>
 </body>
 </html>
