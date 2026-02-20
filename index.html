@@ -3,188 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KIMPINTAY MESSENGER</title>
+    <title>KIMPINTAY OS</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
         :root { --p: #7b61ff; --bg: #0b0b0e; --panel: #16161e; --success: #00ff88; --text: #e0e0e0; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; height: 100vh; overflow: hidden; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; overflow: hidden; }
 
-        /* Экраны */
-        .screen { position: fixed; inset: 0; display: flex; flex-direction: column; transition: 0.3s; background: var(--bg); z-index: 10; }
-        .screen.hidden { transform: translateY(100%); opacity: 0; pointer-events: none; }
+        /* ЭКРАН ВХОДА */
+        .screen { position: fixed; inset: 0; display: flex; flex-direction: column; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: var(--bg); z-index: 10; }
+        .screen.hidden { transform: scale(0.9); opacity: 0; pointer-events: none; }
+        .login-card { background: var(--panel); padding: 35px; border-radius: 28px; width: 90%; max-width: 380px; border: 1px solid #333; margin: auto; }
 
-        /* Вход */
-        .login-screen { justify-content: center; align-items: center; padding: 40px; z-index: 100; }
-        .login-card { background: var(--panel); padding: 30px; border-radius: 24px; width: 100%; max-width: 350px; border: 1px solid #333; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        /* ИНТЕРФЕЙС */
+        .app-container { display: flex; height: 100vh; width: 100vw; }
+        .sidebar { width: 320px; background: var(--panel); border-right: 1px solid #222; display: flex; flex-direction: column; }
+        .chat-win { flex: 1; display: flex; flex-direction: column; background: #08080a; }
 
-        /* Главный экран */
-        .main-app { display: flex; flex-direction: row; }
-        .sidebar { width: 350px; background: var(--panel); border-right: 1px solid #222; display: flex; flex-direction: column; }
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: #08080a; }
-
-        /* Контакты */
-        .contact-item { padding: 15px 20px; border-bottom: 1px solid #222; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
-        .contact-item:hover { background: #20202a; }
-        .fire { font-size: 18px; filter: grayscale(1); opacity: 0.2; }
-        .fire.online { filter: grayscale(0) hue-rotate(240deg); opacity: 1; text-shadow: 0 0 10px var(--p); }
-
-        /* Сообщения */
-        .msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .bubble { padding: 12px 18px; border-radius: 20px; max-width: 75%; font-size: 15px; position: relative; line-height: 1.4; }
+        /* ШАПКА И КОНТАКТЫ */
+        .header { padding: 15px 20px; background: #000; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
+        .contact-item { padding: 15px; border-bottom: 1px solid #1a1a1a; cursor: pointer; display: flex; justify-content: space-between; }
+        .contact-item:hover { background: #1f1f27; }
+        
+        /* ЧАТ */
+        .msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .bubble { padding: 10px 15px; border-radius: 18px; max-width: 75%; font-size: 15px; word-wrap: break-word; }
         .bubble.in { background: #222; align-self: flex-start; border-bottom-left-radius: 4px; }
-        .bubble.out { background: var(--p); align-self: flex-end; border-bottom-right-radius: 4px; color: white; }
+        .bubble.out { background: var(--p); align-self: flex-end; border-bottom-right-radius: 4px; }
 
-        /* Поля ввода */
-        input { background: #1a1a22; border: 1px solid #333; color: white; padding: 15px; border-radius: 14px; width: 100%; outline: none; margin-bottom: 10px; font-size: 16px; }
-        button { background: var(--p); border: none; color: white; padding: 15px; border-radius: 14px; cursor: pointer; font-weight: bold; font-size: 16px; width: 100%; }
-        .send-area { padding: 20px; background: var(--panel); display: flex; gap: 10px; }
-
-        /* Статус плашка */
-        .status-bar { padding: 10px 20px; font-size: 12px; display: flex; align-items: center; gap: 8px; background: #000; border-bottom: 1px solid #222; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: #444; }
-        .dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        /* КНОПКИ И ВВОД */
+        input { background: #1a1a22; border: 1px solid #333; color: white; padding: 14px; border-radius: 12px; width: 100%; outline: none; margin-bottom: 10px; }
+        button { background: var(--p); border: none; color: white; padding: 12px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:active { transform: scale(0.96); }
+        .logout-btn { background: #331111; color: #ff4444; font-size: 11px; padding: 5px 10px; }
 
         @media (max-width: 768px) { 
             .sidebar { width: 100%; } 
-            .chat-area { position: fixed; inset: 0; z-index: 50; transform: translateX(100%); transition: 0.3s; }
-            .chat-area.active { transform: translateX(0); }
+            .chat-win { position: fixed; inset: 0; transform: translateX(100%); transition: 0.3s; z-index: 20; }
+            .chat-win.active { transform: translateX(0); }
         }
     </style>
 </head>
 <body>
 
-    <div id="login-scr" class="screen login-screen">
+    <div id="login-scr" class="screen">
         <div class="login-card">
-            <h2 style="text-align:center; color:var(--p); margin-bottom:30px">KIMPINTAY</h2>
+            <h2 style="text-align:center; color:var(--p); margin-bottom:10px">KIMPINTAY</h2>
+            <p style="text-align:center; font-size:12px; color:#666; margin-bottom:25px">Вход в защищенный профиль</p>
             <input type="text" id="nick" placeholder="Никнейм">
             <input type="password" id="pass" placeholder="Пароль">
-            <button onclick="initializeApp()">ВОЙТИ В АККАУНТ</button>
-            <p id="err" style="color:red; font-size:12px; text-align:center; margin-top:10px"></p>
+            <button onclick="auth()" style="width:100%">ВОЙТИ / СОЗДАТЬ</button>
+            <p id="err" style="color:#ff4444; font-size:11px; text-align:center; margin-top:10px"></p>
         </div>
     </div>
 
-    <div id="main-scr" class="screen main-app hidden">
-        <div class="sidebar">
-            <div class="status-bar">
-                <div id="my-dot" class="dot"></div>
-                <span id="my-id-label">Подключение...</span>
+    <div id="main-scr" class="screen hidden">
+        <div class="app-container">
+            <div class="sidebar">
+                <div class="header">
+                    <div style="display:flex; align-items:center; gap:8px">
+                        <div id="status-dot" style="width:8px; height:8px; border-radius:50%; background:#444"></div>
+                        <b id="my-name" style="font-size:14px"></b>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">ВЫЙТИ</button>
+                </div>
+                <div style="padding:15px">
+                    <input type="text" id="add-id" placeholder="ID друга (kp-...)" style="margin:0; font-size:12px">
+                    <button onclick="addFriend()" style="width:100%; margin-top:5px; font-size:12px">ДОБАВИТЬ</button>
+                </div>
+                <div id="contacts-list" style="flex:1; overflow-y:auto"></div>
             </div>
-            <div style="padding:15px">
-                <input type="text" id="add-id" placeholder="ID друга" style="margin:0; font-size:13px; padding:10px">
-                <button onclick="addFriend()" style="margin-top:5px; padding:8px; font-size:12px">ДОБАВИТЬ</button>
-            </div>
-            <div id="contacts-list" style="overflow-y:auto; flex:1"></div>
-        </div>
 
-        <div id="chat-win" class="chat-area">
-            <div style="padding:15px; background:var(--panel); border-bottom:1px solid #222; display:flex; align-items:center; gap:15px">
-                <button onclick="closeChat()" style="width:auto; padding:5px 12px; background:#222; display:none" id="back">←</button>
-                <b id="target-name">Выберите чат</b>
-            </div>
-            <div id="msgs" class="msgs"></div>
-            <div class="send-area">
-                <input type="text" id="msg-input" placeholder="Сообщение..." style="margin:0">
-                <button onclick="sendMsg()" style="width:60px">➤</button>
+            <div id="chat-win" class="chat-win">
+                <div class="header">
+                    <button onclick="closeChat()" id="back-btn" style="background:none; display:none">←</button>
+                    <b id="chat-title">Выберите контакт</b>
+                    <div style="width:30px"></div>
+                </div>
+                <div id="msgs" class="msgs"></div>
+                <div style="padding:15px; background:var(--panel); display:flex; gap:10px">
+                    <input type="text" id="msg-input" placeholder="Сообщение..." style="margin:0">
+                    <button onclick="send()" style="width:50px">➤</button>
+                </div>
             </div>
         </div>
     </div>
 
 <script>
-    let peer = null, conn = null, contacts = [];
+    let peer = null, conn = null, currentUser = null;
+    let db = JSON.parse(localStorage.getItem('kp_vault')) || {}; // БД пользователей
 
-    // 1. ИНИЦИАЛИЗАЦИЯ (КАК В ПРИЛОЖЕНИИ)
-    function initializeApp() {
-        const nick = document.getElementById('nick').value.trim().toLowerCase();
-        const pass = document.getElementById('pass').value.trim();
-        if(!nick || !pass) return;
+    // 1. АВТОРИЗАЦИЯ
+    function auth() {
+        const n = document.getElementById('nick').value.trim().toLowerCase();
+        const p = document.getElementById('pass').value.trim();
+        if(!n || !p) return;
 
-        // Генерация ID
-        const myId = 'kp-' + nick;
+        if(db[n]) {
+            if(db[n].pass !== p) {
+                document.getElementById('err').innerText = "Неверный пароль!";
+                return;
+            }
+        } else {
+            // Регистрация нового
+            db[n] = { pass: p, contacts: [], history: {} };
+            saveDB();
+        }
 
-        peer = new Peer(myId);
+        currentUser = n;
+        startPeer();
+    }
 
+    function startPeer() {
+        peer = new Peer('kp-' + currentUser);
+        
         peer.on('open', (id) => {
             document.getElementById('login-scr').classList.add('hidden');
             document.getElementById('main-scr').classList.remove('hidden');
-            document.getElementById('my-dot').classList.add('online');
-            document.getElementById('my-id-label').innerText = "ONLINE: " + id;
-            loadContacts();
+            document.getElementById('my-name').innerText = currentUser.toUpperCase();
+            document.getElementById('status-dot').style.background = "#00ff88";
+            renderContacts();
         });
 
         peer.on('connection', (c) => {
             conn = c;
-            setupEvents();
+            setupConn();
         });
-
-        peer.on('error', (e) => {
-            document.getElementById('err').innerText = "Ошибка: Возможно, ник занят";
+        
+        peer.on('error', () => {
+            document.getElementById('err').innerText = "Ошибка сети или ник занят";
         });
     }
 
-    // 2. РАБОТА С КОНТАКТАМИ
+    // 2. КОНТАКТЫ
     function addFriend() {
         const id = document.getElementById('add-id').value.trim();
-        if(id.startsWith('kp-') && !contacts.includes(id)) {
-            contacts.push(id);
-            localStorage.setItem('kp_app_contacts', JSON.stringify(contacts));
+        if(id.startsWith('kp-') && !db[currentUser].contacts.includes(id)) {
+            db[currentUser].contacts.push(id);
+            saveDB();
             renderContacts();
+            document.getElementById('add-id').value = "";
         }
     }
 
     function renderContacts() {
         const list = document.getElementById('contacts-list');
         list.innerHTML = '';
-        contacts.forEach(id => {
+        db[currentUser].contacts.forEach(id => {
             const div = document.createElement('div');
             div.className = 'contact-item';
-            div.innerHTML = `<b>${id.toUpperCase()}</b> <span class="fire" id="fire-${id}">🔥</span>`;
-            div.onclick = () => {
-                if(window.innerWidth <= 768) {
-                    document.getElementById('chat-win').classList.add('active');
-                    document.getElementById('back').style.display = 'block';
-                }
-                if(conn) conn.close();
-                conn = peer.connect(id);
-                setupEvents();
-            };
+            div.innerHTML = `<b>${id.toUpperCase()}</b> <span onclick="del('${id}', event)">×</span>`;
+            div.onclick = () => openChat(id);
             list.appendChild(div);
         });
     }
 
-    function setupEvents() {
-        conn.on('open', () => {
-            document.getElementById('target-name').innerText = conn.peer;
-            const f = document.getElementById('fire-' + conn.peer);
-            if(f) f.classList.add('online');
+    // 3. ЧАТ И ИСТОРИЯ
+    function openChat(id) {
+        if(window.innerWidth <= 768) {
+            document.getElementById('chat-win').classList.add('active');
+            document.getElementById('back-btn').style.display = 'block';
+        }
+        document.getElementById('chat-title').innerText = id.toUpperCase();
+        if(conn) conn.close();
+        conn = peer.connect(id);
+        setupConn();
+        loadHistory(id);
+    }
+
+    function setupConn() {
+        conn.on('data', (data) => {
+            saveMsg(conn.peer, data, 'in');
+            if(document.getElementById('chat-title').innerText === conn.peer.toUpperCase()) {
+                addBubble(data, 'in');
+            }
         });
-        conn.on('data', d => addBubble(d, 'in'));
     }
 
-    function loadContacts() {
-        contacts = JSON.parse(localStorage.getItem('kp_app_contacts')) || [];
-        renderContacts();
-    }
-
-    // 3. ОТПРАВКА
-    function sendMsg() {
+    function send() {
         const i = document.getElementById('msg-input');
         if(i.value && conn && conn.open) {
-            conn.send(i.value);
-            addBubble(i.value, 'out');
+            const txt = i.value;
+            conn.send(txt);
+            saveMsg(conn.peer, txt, 'out');
+            addBubble(txt, 'out');
             i.value = "";
         }
+    }
+
+    function saveMsg(target, text, type) {
+        if(!db[currentUser].history[target]) db[currentUser].history[target] = [];
+        db[currentUser].history[target].push({ text, type });
+        saveDB();
+    }
+
+    function loadHistory(target) {
+        const box = document.getElementById('msgs');
+        box.innerHTML = '';
+        const hist = db[currentUser].history[target] || [];
+        hist.forEach(m => addBubble(m.text, m.type));
     }
 
     function addBubble(text, type) {
         const d = document.createElement('div');
         d.className = 'bubble ' + type;
         d.innerText = text;
-        document.getElementById('msgs').appendChild(d);
-        document.getElementById('msgs').scrollTop = 99999;
+        const box = document.getElementById('msgs');
+        box.appendChild(d);
+        box.scrollTop = box.scrollHeight;
     }
 
+    // СИСТЕМНЫЕ
+    function saveDB() { localStorage.setItem('kp_vault', JSON.stringify(db)); }
+    function logout() { location.reload(); }
     function closeChat() { document.getElementById('chat-win').classList.remove('active'); }
+    function del(id, e) {
+        e.stopPropagation();
+        db[currentUser].contacts = db[currentUser].contacts.filter(c => c !== id);
+        saveDB();
+        renderContacts();
+    }
 </script>
 </body>
 </html>
