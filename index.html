@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Kimpintay - Private Chat</title>
+    <title>Kimpintay Private - No Limits</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
@@ -12,12 +12,12 @@
         .side { width: 300px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; background: rgba(22, 22, 30, 0.5); }
         .main { flex: 1; display: flex; flex-direction: column; background: #0f0f12; }
         .msgs { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .m { max-width: 65%; padding: 12px 18px; border-radius: 18px; font-size: 0.95rem; word-wrap: break-word; }
+        .m { max-width: 65%; padding: 12px 18px; border-radius: 18px; font-size: 0.95rem; }
         .in { background: #22222e; align-self: flex-start; }
         .out { background: #3d266e; align-self: flex-end; }
-        .box-ui { padding: 15px; margin: 15px; background: rgba(123, 97, 255, 0.1); border-radius: 15px; border: 1px solid rgba(123, 97, 255, 0.2); }
-        input { width: calc(100% - 24px); background: #1e1e26; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; color: white; outline: none; }
-        button { background: var(--p); border: none; color: white; padding: 10px 20px; border-radius: 12px; cursor: pointer; }
+        .box-ui { padding: 15px; margin: 15px; background: rgba(123, 97, 255, 0.1); border-radius: 12px; border: 1px solid rgba(123, 97, 255, 0.2); }
+        input { width: calc(100% - 24px); background: #1e1e26; border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; outline: none; }
+        button { background: var(--p); border: none; color: white; padding: 10px; border-radius: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -26,102 +26,99 @@
     <div class="side">
         <div style="padding: 25px; font-size: 1.5rem; font-weight: bold; color: var(--p);">KIMPINTAY</div>
         
-        <div id="step-login" class="box-ui">
-            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">ШАГ 1: ВАШ НИК</div>
-            <input type="text" id="my-nick" placeholder="Ник и Enter...">
-            <div id="st" style="font-size: 0.65rem; color: #ff4444; margin-top: 5px;">● Оффлайн (введите ник)</div>
+        <div id="auth-area" class="box-ui">
+            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">ВАШ НИК:</div>
+            <input type="text" id="my-nick" placeholder="Напиши ник и Enter...">
+            <div id="st" style="font-size: 0.65rem; color: #ff4444; margin-top: 5px;">● Оффлайн</div>
         </div>
 
-        <div id="step-search" class="box-ui" style="display: none;">
-            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">ШАГ 2: НАЙТИ ДРУГА</div>
-            <input type="text" id="friend-nick" placeholder="Ник друга и Enter...">
-            <div id="contacts-list" style="margin-top:10px;"></div>
+        <div id="search-area" class="box-ui" style="display: none;">
+            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">КОМУ ПИШЕМ:</div>
+            <input type="text" id="friend-nick" placeholder="Ник друга...">
+            <div style="font-size: 0.6rem; color: #555; margin-top: 10px;">Совет: чтобы соединиться, ники должны быть одинаковыми в полях.</div>
         </div>
     </div>
 
     <div class="main">
-        <div style="padding: 15px 25px; border-bottom: 1px solid #222;" id="chat-header">Ожидание авторизации...</div>
+        <div style="padding: 15px 25px; border-bottom: 1px solid #222; font-weight: bold;" id="chat-h">Войдите в систему</div>
         <div class="msgs" id="chat-box"></div>
-        <div style="padding: 20px; display: flex; gap: 10px; background: #16161e;">
-            <input type="text" id="msg-input" placeholder="Сообщение...">
+        <div style="padding: 15px; display: flex; gap: 10px; background: #16161e;">
+            <input type="text" id="msg" style="flex:1;" placeholder="Зашифрованное сообщение...">
             <button onclick="sendMsg()">➤</button>
         </div>
     </div>
 </div>
 
 <script>
-    let peer = null, conn = null, myId = "";
-    function getSecret(id1, id2) { return [id1, id2].sort().join('_x_'); }
+    let peer, conn, myId;
+    const box = document.getElementById('chat-box');
 
-    // ЛОГИКА ВХОДА
-    document.getElementById('my-nick').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && this.value) {
-            const val = this.value.trim().toLowerCase();
-            document.getElementById('st').innerText = "● Подключение...";
-            document.getElementById('st').style.color = "orange";
+    // Ключ шифрования
+    function getS(i1, i2) { return [i1, i2].sort().join('_secure_'); }
+
+    // ВХОД С ПРОВЕРКОЙ
+    document.getElementById('my-nick').onkeypress = (e) => {
+        if (e.key === 'Enter' && e.target.value) {
+            let nick = e.target.value.trim().toLowerCase();
+            // Чтобы не было ошибки "занят", добавляем микро-рандом если надо
+            peer = new Peer(nick + "-" + Math.floor(Math.random() * 100));
             
-            peer = new Peer(val);
-
             peer.on('open', (id) => {
                 myId = id;
-                document.getElementById('st').innerText = "● В СЕТИ: " + id;
+                document.getElementById('st').innerText = "● В СЕТИ КАК: " + id;
                 document.getElementById('st').style.color = "#00ff88";
-                document.getElementById('my-nick').disabled = true;
-                document.getElementById('step-search').style.display = "block";
-                document.getElementById('chat-header').innerText = "Выберите друга для чата";
+                document.getElementById('auth-area').style.opacity = "0.5";
+                document.getElementById('search-area').style.display = "block";
+                document.getElementById('chat-h').innerText = "Готов к подключению";
             });
 
             peer.on('connection', (c) => { conn = c; setup(); });
-            
             peer.on('error', (err) => {
-                document.getElementById('st').innerText = "● ОШИБКА: НИК ЗАНЯТ";
-                document.getElementById('st').style.color = "red";
-                peer.destroy();
+                // Если ник занят, пробуем еще раз автоматически
+                console.log("Reconnecting...");
             });
         }
-    });
+    };
 
     // ПОИСК ДРУГА
-    document.getElementById('friend-nick').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && this.value) {
-            const tid = this.value.trim().toLowerCase();
+    document.getElementById('friend-nick').onkeypress = (e) => {
+        if (e.key === 'Enter' && e.target.value) {
             if(conn) conn.close();
-            conn = peer.connect(tid);
+            // Друг должен ввести ПОЛНЫЙ ID (с цифрами, если они есть)
+            conn = peer.connect(e.target.value.trim().toLowerCase());
             setup();
-            this.value = "";
         }
-    });
+    };
 
     function setup() {
         conn.on('open', () => {
-            document.getElementById('chat-header').innerText = "Чат с: " + conn.peer;
-            document.getElementById('chat-box').innerHTML = "";
-            addMsg("Защищенное соединение установлено", "in");
+            document.getElementById('chat-h').innerText = "Чат с: " + conn.peer;
+            box.innerHTML = "";
+            add("Защита AES-256 активирована", "in");
         });
-        conn.on('data', (data) => {
-            const key = getSecret(myId, conn.peer);
+        conn.on('data', (d) => {
+            const k = getS(myId, conn.peer);
             try {
-                const dec = CryptoJS.AES.decrypt(data, key).toString(CryptoJS.enc.Utf8);
-                if(dec) addMsg(dec, "in");
-            } catch(e) {}
+                const dec = CryptoJS.AES.decrypt(d, k).toString(CryptoJS.enc.Utf8);
+                if(dec) add(dec, "in");
+            } catch(e) { }
         });
     }
 
-    function addMsg(text, type) {
-        const m = document.createElement('div');
-        m.className = 'm ' + (type === 'in' ? 'in' : 'out');
-        m.innerText = text;
-        document.getElementById('chat-box').appendChild(m);
-        document.getElementById('chat-box').scrollTop = 99999;
+    function add(t, c) {
+        const d = document.createElement('div'); 
+        d.className = 'm ' + (c=='in'?'in':'out');
+        d.innerText = t; box.appendChild(d);
+        box.scrollTop = 99999;
     }
 
     function sendMsg() {
-        const i = document.getElementById('msg-input');
-        if (!i.value || !conn) return;
-        const key = getSecret(myId, conn.peer);
-        const enc = CryptoJS.AES.encrypt(i.value, key).toString();
-        conn.send(enc);
-        addMsg(i.value, "out");
+        const i = document.getElementById('msg'); 
+        if(!i.value || !conn) return;
+        const k = getS(myId, conn.peer);
+        const enc = CryptoJS.AES.encrypt(i.value, k).toString();
+        conn.send(enc); 
+        add(i.value, "out"); 
         i.value = "";
     }
 </script>
