@@ -2,23 +2,22 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Kimpintay Private - Ultra Stable</title>
+    <title>Kimpintay Private - Fixed Version</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root { --p: #7b61ff; --bg: #0b0b0e; }
         body { background: radial-gradient(circle at center, #1a1a2e 0%, #050505 100%); color: white; height: 100vh; margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; justify-content: center; align-items: center; overflow: hidden; }
-        .app { width: 95%; max-width: 1100px; height: 85vh; background: #16161e; display: flex; border-radius: 24px; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.05); }
+        .app { width: 95%; max-width: 1100px; height: 85vh; background: #16161e; display: flex; border-radius: 24px; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.7); }
         .side { width: 300px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; background: rgba(22, 22, 30, 0.5); }
         .main { flex: 1; display: flex; flex-direction: column; background: #0f0f12; }
         .msgs { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .m { max-width: 65%; padding: 12px 18px; border-radius: 18px; font-size: 0.95rem; word-wrap: break-word; }
         .in { background: #22222e; align-self: flex-start; }
         .out { background: #3d266e; align-self: flex-end; }
-        .box-ui { padding: 15px; margin: 15px; background: rgba(123, 97, 255, 0.1); border-radius: 15px; border: 1px solid rgba(123, 97, 255, 0.2); }
-        input { width: calc(100% - 24px); background: #1e1e26; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; color: white; outline: none; margin-bottom: 8px; }
-        button { background: var(--p); border: none; color: white; padding: 12px; border-radius: 12px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.3s; }
-        button:hover { background: #8e7aff; }
+        .box-ui { padding: 15px; margin: 15px; background: rgba(123, 97, 255, 0.1); border-radius: 12px; }
+        input { width: calc(100% - 24px); background: #1e1e26; border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; outline: none; margin-bottom: 8px; }
+        button { background: var(--p); border: none; color: white; padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -27,108 +26,101 @@
     <div class="side">
         <div style="padding: 25px; font-size: 1.5rem; font-weight: bold; color: var(--p);">KIMPINTAY</div>
         
-        <div id="auth-box" class="box-ui">
-            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">ВХОД / РЕГИСТРАЦИЯ</div>
-            <input type="text" id="my-nick" placeholder="Ваш никнейм">
-            <input type="password" id="my-pass" placeholder="Ваш пароль">
-            <button onclick="initAccount()">ВОЙТИ В АККАУНТ</button>
+        <div id="reg-area" class="box-ui">
+            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">1. ВАШ АККАУНТ:</div>
+            <input type="text" id="my-nick" placeholder="Придумайте ник">
+            <input type="password" id="my-pass" placeholder="Пароль">
+            <button id="reg-btn" onclick="startMe()">ЗАРЕГИСТРИРОВАТЬСЯ</button>
             <div id="st" style="font-size: 0.65rem; color: #ff4444; margin-top: 8px;">● Оффлайн</div>
         </div>
 
-        <div id="search-box" class="box-ui" style="display: none;">
-            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">НАЙТИ СОБЕСЕДНИКА:</div>
-            <input type="text" id="target-id" placeholder="ID друга (полный)">
-            <div style="font-size: 0.6rem; color: #555; margin-top: 5px;">Введите ID, который ваш друг видит в статусе.</div>
+        <div id="friend-area" class="box-ui" style="display: none;">
+            <div style="font-size: 0.7rem; color: #888; margin-bottom: 5px;">2. НАЙТИ ДРУГА:</div>
+            <input type="text" id="friend-id" placeholder="ID друга целиком">
+            <button onclick="connectFriend()">НАЧАТЬ ЧАТ</button>
         </div>
     </div>
 
     <div class="main">
-        <div style="padding: 15px 25px; border-bottom: 1px solid #222; font-weight: bold;" id="chat-h">Требуется авторизация</div>
+        <div style="padding: 15px 25px; border-bottom: 1px solid #222; font-weight: bold;" id="chat-h">Ожидание входа</div>
         <div class="msgs" id="chat-box"></div>
         <div style="padding: 15px; display: flex; gap: 10px; background: #16161e;">
-            <input type="text" id="msg" style="flex:1; margin:0;" placeholder="Напишите сообщение...">
+            <input type="text" id="msg" style="flex:1; margin:0;" placeholder="Сообщение...">
             <button onclick="sendMsg()" style="width:50px;">➤</button>
         </div>
     </div>
 </div>
 
 <script>
-    let peer, conn, myRealId, myPass;
+    let peer, conn, myPass, myCurrentFullId;
     const box = document.getElementById('chat-box');
 
-    function getK(i1, i2) { return [i1, i2].sort().join(myPass); }
+    // Ключ шифрования (пароль + ники)
+    function getK(id1, id2) { return [id1, id2].sort().join(myPass); }
 
-    function initAccount() {
+    function startMe() {
         const nick = document.getElementById('my-nick').value.trim().toLowerCase();
         const pass = document.getElementById('my-pass').value.trim();
 
-        if(!nick || !pass) return alert("Заполните ник и пароль!");
+        if(!nick || !pass) return alert("Заполни все поля!");
 
-        // Проверка пароля (хранится только в твоем браузере)
-        const localStoredPass = localStorage.getItem('_kp_' + nick);
-        if(localStoredPass && localStoredPass !== pass) return alert("Пароль неверный!");
-        if(!localStoredPass) localStorage.setItem('_kp_' + nick, pass);
+        // Проверка пароля в LocalStorage
+        const saved = localStorage.getItem('p_' + nick);
+        if(saved && saved !== pass) return alert("Пароль неверный!");
+        if(!saved) localStorage.setItem('p_' + nick, pass);
 
         myPass = pass;
         
-        // Создаем УНИКАЛЬНЫЙ ID, чтобы сервер не выдавал ошибку "занят"
-        // Мы добавляем дату, но только ПРИ РЕГИСТРАЦИИ в сети
-        const uniqueSuffix = Math.floor(Math.random() * 999);
-        myRealId = nick + "-" + uniqueSuffix;
+        // Создаем ID с уникальным хвостом, чтобы не было ошибки "занят"
+        const rand = Math.floor(Math.random() * 900) + 100;
+        myCurrentFullId = nick + "-" + rand;
 
-        // Настройка Peer с параметрами для обхода блокировок телефонов
-        peer = new Peer(myRealId, {
-            debug: 2,
+        // Настройки для пробития мобильных сетей (STUN)
+        peer = new Peer(myCurrentFullId, {
             config: {'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }]}
         });
 
         peer.on('open', (id) => {
             document.getElementById('st').innerText = "● В СЕТИ: " + id;
             document.getElementById('st').style.color = "#00ff88";
-            document.getElementById('auth-box').style.opacity = "0.6";
-            document.getElementById('search-box').style.display = "block";
-            document.getElementById('chat-h').innerText = "Ваш ID для друга: " + id;
+            document.getElementById('reg-area').style.opacity = "0.5";
+            document.getElementById('reg-btn').disabled = true;
+            document.getElementById('friend-area').style.display = "block";
+            document.getElementById('chat-h').innerText = "Ваш ID: " + id;
         });
 
-        peer.on('connection', (c) => { 
-            conn = c; 
-            setup(); 
-        });
-
+        peer.on('connection', (c) => { conn = c; setup(); });
+        
         peer.on('error', (err) => {
+            alert("Ошибка сети! Попробуй другой ник или обнови страницу.");
             console.error(err);
-            if(err.type === 'unavailable-id') {
-                alert("Этот ID занят сервером, попробуйте еще раз через секунду.");
-            } else {
-                alert("Ошибка сети. Попробуйте сменить интернет или ник.");
-            }
         });
     }
 
-    document.getElementById('target-id').onkeypress = (e) => {
-        if (e.key === 'Enter' && e.target.value) {
-            if(conn) conn.close();
-            conn = peer.connect(e.target.value.trim().toLowerCase());
-            setup();
-        }
-    };
+    function connectFriend() {
+        const target = document.getElementById('friend-id').value.trim().toLowerCase();
+        if(!target) return;
+        if(conn) conn.close();
+        conn = peer.connect(target);
+        setup();
+    }
 
     function setup() {
         conn.on('open', () => {
             document.getElementById('chat-h').innerText = "Чат с: " + conn.peer;
             box.innerHTML = "";
-            append("Канал зашифрован ключом вашего пароля", "in");
+            add("Безопасное соединение создано", "in");
         });
         conn.on('data', (d) => {
-            const k = getK(myRealId, conn.peer);
+            const k = getK(myCurrentFullId, conn.peer);
             try {
                 const dec = CryptoJS.AES.decrypt(d, k).toString(CryptoJS.enc.Utf8);
-                if(dec) append(dec, "in");
-            } catch(e) { append("Сообщение не расшифровано. Проверьте пароли!", "in"); }
+                if(dec) add(dec, "in");
+            } catch(e) { add("Ошибка: пароли не совпадают!", "in"); }
         });
     }
 
-    function append(t, c) {
+    function add(t, c) {
         const d = document.createElement('div');
         d.className = 'm ' + (c == 'in' ? 'in' : 'out');
         d.innerText = t; box.appendChild(d);
@@ -138,10 +130,10 @@
     function sendMsg() {
         const i = document.getElementById('msg');
         if (!i.value || !conn) return;
-        const k = getK(myRealId, conn.peer);
+        const k = getK(myCurrentFullId, conn.peer);
         const enc = CryptoJS.AES.encrypt(i.value, k).toString();
         conn.send(enc);
-        append(i.value, "out");
+        add(i.value, "out");
         i.value = "";
     }
 </script>
