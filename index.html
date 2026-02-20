@@ -2,40 +2,37 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KIMPINTAY - Тыркает Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KIMPINTAY - TURBO</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --p: #7b61ff; --bg: #0b0b0e; --panel: #16161e; --success: #00ff88; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
+        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         
-        /* Шторка */
-        .drawer { position: fixed; left: -300px; top: 0; width: 300px; height: 100%; background: #111; border-right: 1px solid #333; transition: 0.3s ease; z-index: 100; padding: 20px; box-sizing: border-box; }
+        .drawer { position: fixed; left: -300px; top: 0; width: 300px; height: 100%; background: #111; border-right: 1px solid #333; transition: 0.3s ease; z-index: 1000; padding: 20px; box-sizing: border-box; }
         .drawer.open { left: 0; box-shadow: 10px 0 50px rgba(0,0,0,0.8); }
         .drawer-handle { position: absolute; right: -30px; top: 50%; width: 30px; height: 60px; background: var(--p); border-radius: 0 10px 10px 0; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 
         .app-container { display: flex; width: 100vw; height: 100vh; }
-
-        /* Контакты */
         .contacts-bar { width: 350px; background: var(--panel); border-right: 1px solid #222; display: flex; flex-direction: column; }
+        @media (max-width: 768px) { .contacts-bar { width: 100%; } .chat-main { display: none; } .chat-main.active { display: flex; position: fixed; inset: 0; z-index: 500; } }
+
         .contacts-header { padding: 20px; font-weight: bold; font-size: 1.2rem; color: var(--p); border-bottom: 1px solid #222; }
         .contacts-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .contact-card { padding: 15px; background: #1e1e26; border-radius: 12px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; position: relative; }
-        .contact-card:hover { border-color: var(--p); }
+        .contact-card { padding: 15px; background: #1e1e26; border-radius: 12px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; }
         
-        /* Чат */
         .chat-main { flex: 1; display: flex; flex-direction: column; background: #0b0b0d; }
         .chat-header { padding: 15px 25px; border-bottom: 1px solid #222; background: #111; }
         .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #555; margin-right: 8px; }
         .status-dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
         
-        .typing-indicator { font-size: 12px; color: var(--p); height: 15px; margin-top: 4px; font-weight: bold; opacity: 0; transition: 0.2s; }
+        .typing-indicator { font-size: 12px; color: var(--p); height: 15px; margin-top: 4px; font-weight: bold; opacity: 0; }
         .typing-indicator.show { opacity: 1; }
 
         .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .m { padding: 10px 15px; border-radius: 15px; max-width: 70%; word-wrap: break-word; }
-        .in { background: #222; align-self: flex-start; border-bottom-left-radius: 2px; }
-        .out { background: var(--p); align-self: flex-end; border-bottom-right-radius: 2px; }
+        .m { padding: 10px 15px; border-radius: 15px; max-width: 75%; word-wrap: break-word; }
+        .in { background: #222; align-self: flex-start; }
+        .out { background: var(--p); align-self: flex-end; }
 
         .input-area { padding: 20px; background: var(--panel); display: flex; gap: 10px; }
         input { background: #1a1a22; border: 1px solid #333; color: white; padding: 12px; border-radius: 10px; outline: none; width: 100%; font-size: 16px; }
@@ -46,64 +43,74 @@
 
     <div id="drawer" class="drawer">
         <div class="drawer-handle" onclick="toggleDrawer()">❯</div>
-        <h3 style="margin-top:0">Мой Профиль</h3>
+        <h3>Аккаунт</h3>
         <input type="text" id="reg-nick" placeholder="Никнейм">
         <input type="password" id="reg-pass" placeholder="Пароль" style="margin-top:10px">
         <button onclick="login()" style="width:100%; margin-top:15px">ВОЙТИ</button>
-        
-        <div style="margin-top:30px; padding:15px; background:#000; border-radius:10px; border:1px solid #333">
-            <div style="font-size:10px; color:#555; margin-bottom:5px">СТАТУС СЕТИ:</div>
-            <span id="my-status-dot" class="status-dot"></span> <span id="my-status-text" style="font-size:12px">Оффлайн</span>
-            <div id="my-id-val" style="font-size:10px; color:var(--p); margin-top:10px; word-break:break-all; font-family:monospace"></div>
+        <div style="margin-top:20px; font-size:12px;">
+            <span id="my-status-dot" class="status-dot"></span> <span id="my-status-text">Оффлайн</span>
         </div>
+        <div id="my-id-val" style="font-size:9px; color:var(--p); margin-top:10px; word-break:break-all; opacity:0.6"></div>
     </div>
 
     <div class="app-container">
         <div class="contacts-bar">
             <div class="contacts-header">Контакты</div>
             <div style="padding:15px">
-                <input type="text" id="add-id" placeholder="ID друга (kp-nick-...)" style="font-size:12px">
-                <button onclick="addFriend()" style="width:100%; margin-top:5px; font-size:12px">ДОБАВИТЬ В СПИСОК</button>
+                <input type="text" id="add-id" placeholder="Вставь ID друга" style="font-size:12px">
+                <button onclick="addFriend()" style="width:100%; margin-top:5px; font-size:12px">ДОБАВИТЬ</button>
             </div>
             <div class="contacts-list" id="contacts-list"></div>
         </div>
 
-        <div class="chat-main">
+        <div id="chat-win" class="chat-main">
             <div class="chat-header">
                 <div style="display:flex; align-items:center;">
                     <span id="chat-status-dot" class="status-dot"></span>
-                    <b id="chat-name" style="font-size:18px">Выберите диалог</b>
+                    <b id="chat-name">Выберите чат</b>
                 </div>
                 <div id="typing" class="typing-indicator">тыркает...</div>
             </div>
             <div class="messages" id="msgs"></div>
             <div class="input-area">
-                <input type="text" id="msg-input" placeholder="Напишите что-нибудь..." oninput="notifyTyping()">
-                <button onclick="send()">ОТПРАВИТЬ</button>
+                <input type="text" id="msg-input" placeholder="Сообщение..." oninput="notifyTyping()">
+                <button onclick="send()">➤</button>
             </div>
         </div>
     </div>
 
 <script>
-    let peer, conn, myId, contacts = [];
+    let peer = null, conn = null, myId = "", contacts = [];
     let typingTimeout;
 
     function toggleDrawer() { document.getElementById('drawer').classList.toggle('open'); }
 
-    function login() {
+    // НОВЫЙ ДВИЖОК ВХОДА
+    async function login() {
         const nick = document.getElementById('reg-nick').value.trim().toLowerCase();
         const pass = document.getElementById('reg-pass').value.trim();
         if(!nick || !pass) return;
 
         myId = "kp-" + nick;
-        peer = new Peer(myId, { 
-            config: {'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]},
+        
+        // Очистка перед новым входом
+        if(peer) { peer.destroy(); await new Promise(r => setTimeout(r, 500)); }
+
+        peer = new Peer(myId, {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' }
+                ]
+            },
             debug: 1
         });
 
         peer.on('open', (id) => {
             document.getElementById('my-status-dot').classList.add('online');
-            document.getElementById('my-status-text').innerText = "В СЕТИ: " + nick.toUpperCase();
+            document.getElementById('my-status-text').innerText = "В сети: " + nick;
             document.getElementById('my-id-val').innerText = id;
             toggleDrawer();
             loadContacts();
@@ -115,12 +122,13 @@
         });
 
         peer.on('error', (err) => {
-            if(err.type === 'unavailable-id') alert("Ник занят. Подождите пару секунд.");
+            if(err.type === 'unavailable-id') alert("Этот ник еще занят сервером, подожди 10 сек.");
+            console.error("PeerJS Error:", err.type);
         });
     }
 
     function loadContacts() {
-        contacts = JSON.parse(localStorage.getItem('c_' + myId)) || [];
+        contacts = JSON.parse(localStorage.getItem('cl_' + myId)) || [];
         renderContacts();
     }
 
@@ -128,9 +136,8 @@
         const id = document.getElementById('add-id').value.trim();
         if(id && !contacts.includes(id)) {
             contacts.push(id);
-            localStorage.setItem('c_' + myId, JSON.stringify(contacts));
+            localStorage.setItem('cl_' + myId, JSON.stringify(contacts));
             renderContacts();
-            document.getElementById('add-id').value = "";
         }
     }
 
@@ -140,10 +147,11 @@
         contacts.forEach(id => {
             const div = document.createElement('div');
             div.className = 'contact-card';
-            div.innerHTML = `<b>${id.split('-')[1].toUpperCase()}</b><br><small style="color:#666; font-size:9px">${id}</small>`;
+            div.innerHTML = `<b>${id.split('-')[1].toUpperCase()}</b><br><small style="color:#555;font-size:9px">${id}</small>`;
             div.onclick = () => {
+                if(window.innerWidth <= 768) document.getElementById('chat-win').classList.add('active');
                 if(conn) conn.close();
-                conn = peer.connect(id);
+                conn = peer.connect(id, {reliable: true});
                 setupConn();
             };
             list.appendChild(div);
@@ -154,12 +162,15 @@
         conn.on('open', () => {
             document.getElementById('chat-name').innerText = conn.peer.split('-')[1].toUpperCase();
             document.getElementById('chat-status-dot').classList.add('online');
-            addMsg("Соединение установлено. Начните общение.", "in", true);
+            addMsg("Соединение установлено", "in", true);
         });
 
         conn.on('data', (data) => {
-            if(data === "###TYPING###") {
-                showTyping();
+            if(data === "###T") {
+                const t = document.getElementById('typing');
+                t.classList.add('show');
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => t.classList.remove('show'), 2000);
             } else {
                 addMsg(data, 'in');
             }
@@ -167,27 +178,15 @@
 
         conn.on('close', () => {
             document.getElementById('chat-status-dot').classList.remove('online');
-            document.getElementById('chat-name').innerText = "Собеседник отключился";
         });
     }
 
-    function notifyTyping() {
-        if(conn && conn.open) {
-            conn.send("###TYPING###");
-        }
-    }
+    function notifyTyping() { if(conn && conn.open) conn.send("###T"); }
 
-    function showTyping() {
-        const t = document.getElementById('typing');
-        t.classList.add('show');
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => t.classList.remove('show'), 2000);
-    }
-
-    function addMsg(t, c, system = false) {
+    function addMsg(t, c, sys = false) {
         const d = document.createElement('div');
         d.className = 'm ' + c;
-        if(system) d.style = "background:transparent; color:#555; font-size:10px; align-self:center; margin:10px 0";
+        if(sys) d.style = "background:transparent; color:#444; font-size:10px; align-self:center";
         d.innerText = t;
         const box = document.getElementById('msgs');
         box.appendChild(d);
