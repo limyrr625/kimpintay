@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KIMPINTAY - TURBO</title>
+    <title>KIMPINTAY - CORE REBUILD</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --p: #7b61ff; --bg: #0b0b0e; --panel: #16161e; --success: #00ff88; }
         body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         
+        /* ТВОЙ ВИЗУАЛ */
         .drawer { position: fixed; left: -300px; top: 0; width: 300px; height: 100%; background: #111; border-right: 1px solid #333; transition: 0.3s ease; z-index: 1000; padding: 20px; box-sizing: border-box; }
         .drawer.open { left: 0; box-shadow: 10px 0 50px rgba(0,0,0,0.8); }
         .drawer-handle { position: absolute; right: -30px; top: 50%; width: 30px; height: 60px; background: var(--p); border-radius: 0 10px 10px 0; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
@@ -46,7 +47,8 @@
         <h3>Аккаунт</h3>
         <input type="text" id="reg-nick" placeholder="Никнейм">
         <input type="password" id="reg-pass" placeholder="Пароль" style="margin-top:10px">
-        <button onclick="login()" style="width:100%; margin-top:15px">ВОЙТИ</button>
+        <button onclick="startNetwork()" style="width:100%; margin-top:15px">ВОЙТИ</button>
+        
         <div style="margin-top:20px; font-size:12px;">
             <span id="my-status-dot" class="status-dot"></span> <span id="my-status-text">Оффлайн</span>
         </div>
@@ -57,7 +59,7 @@
         <div class="contacts-bar">
             <div class="contacts-header">Контакты</div>
             <div style="padding:15px">
-                <input type="text" id="add-id" placeholder="Вставь ID друга" style="font-size:12px">
+                <input type="text" id="add-id" placeholder="ID друга" style="font-size:12px">
                 <button onclick="addFriend()" style="width:100%; margin-top:5px; font-size:12px">ДОБАВИТЬ</button>
             </div>
             <div class="contacts-list" id="contacts-list"></div>
@@ -80,65 +82,59 @@
     </div>
 
 <script>
-    let peer = null, conn = null, myId = "", contacts = [];
-    let typingTimeout;
+    let peer = null, conn = null, contacts = [];
+    let tTimeout;
 
     function toggleDrawer() { document.getElementById('drawer').classList.toggle('open'); }
 
-    // НОВЫЙ ДВИЖОК ВХОДА
-    async function login() {
+    // НОВАЯ ЛОГИКА СЕТИ
+    function startNetwork() {
         const nick = document.getElementById('reg-nick').value.trim().toLowerCase();
-        const pass = document.getElementById('reg-pass').value.trim();
-        if(!nick || !pass) return;
+        if(!nick) return;
 
-        myId = "kp-" + nick;
-        
-        // Очистка перед новым входом
-        if(peer) { peer.destroy(); await new Promise(r => setTimeout(r, 500)); }
+        // Если уже есть соединение - закрываем его чисто
+        if(peer) peer.destroy();
 
-        peer = new Peer(myId, {
-            config: {
-                'iceServers': [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' },
-                    { urls: 'stun:stun3.l.google.com:19302' }
-                ]
-            },
-            debug: 1
-        });
+        // Тайм-аут для очистки ресурсов на телефоне
+        setTimeout(() => {
+            peer = new Peer('kp-' + nick, {
+                config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] },
+                debug: 1
+            });
 
-        peer.on('open', (id) => {
-            document.getElementById('my-status-dot').classList.add('online');
-            document.getElementById('my-status-text').innerText = "В сети: " + nick;
-            document.getElementById('my-id-val').innerText = id;
-            toggleDrawer();
-            loadContacts();
-        });
+            peer.on('open', (id) => {
+                document.getElementById('my-status-dot').classList.add('online');
+                document.getElementById('my-status-text').innerText = "В СЕТИ: " + nick.toUpperCase();
+                document.getElementById('my-id-val').innerText = id;
+                toggleDrawer();
+                loadContacts();
+            });
 
-        peer.on('connection', (incoming) => {
-            conn = incoming;
-            setupConn();
-        });
+            peer.on('connection', (c) => {
+                if(conn) conn.close();
+                conn = c;
+                bindEvents();
+            });
 
-        peer.on('error', (err) => {
-            if(err.type === 'unavailable-id') alert("Этот ник еще занят сервером, подожди 10 сек.");
-            console.error("PeerJS Error:", err.type);
-        });
-    }
-
-    function loadContacts() {
-        contacts = JSON.parse(localStorage.getItem('cl_' + myId)) || [];
-        renderContacts();
+            peer.on('error', (err) => {
+                console.log("Network Error: " + err.type);
+                if(err.type === 'peer-unavailable') alert("Друг сейчас не в сети");
+            });
+        }, 300);
     }
 
     function addFriend() {
         const id = document.getElementById('add-id').value.trim();
-        if(id && !contacts.includes(id)) {
-            contacts.push(id);
-            localStorage.setItem('cl_' + myId, JSON.stringify(contacts));
+        if(id) {
+            if(!contacts.includes(id)) contacts.push(id);
+            localStorage.setItem('k_contacts', JSON.stringify(contacts));
             renderContacts();
         }
+    }
+
+    function loadContacts() {
+        contacts = JSON.parse(localStorage.getItem('k_contacts')) || [];
+        renderContacts();
     }
 
     function renderContacts() {
@@ -147,30 +143,30 @@
         contacts.forEach(id => {
             const div = document.createElement('div');
             div.className = 'contact-card';
-            div.innerHTML = `<b>${id.split('-')[1].toUpperCase()}</b><br><small style="color:#555;font-size:9px">${id}</small>`;
+            div.innerHTML = `<b>${id.replace('kp-','').toUpperCase()}</b><br><small style="color:#555;font-size:9px">${id}</small>`;
             div.onclick = () => {
                 if(window.innerWidth <= 768) document.getElementById('chat-win').classList.add('active');
                 if(conn) conn.close();
-                conn = peer.connect(id, {reliable: true});
-                setupConn();
+                conn = peer.connect(id);
+                bindEvents();
             };
             list.appendChild(div);
         });
     }
 
-    function setupConn() {
+    function bindEvents() {
         conn.on('open', () => {
-            document.getElementById('chat-name').innerText = conn.peer.split('-')[1].toUpperCase();
+            document.getElementById('chat-name').innerText = conn.peer.replace('kp-','').toUpperCase();
             document.getElementById('chat-status-dot').classList.add('online');
-            addMsg("Соединение установлено", "in", true);
+            addMsg("СИСТЕМА: Соединение установлено", "in", true);
         });
 
         conn.on('data', (data) => {
-            if(data === "###T") {
+            if(data === "TYPING") {
                 const t = document.getElementById('typing');
                 t.classList.add('show');
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => t.classList.remove('show'), 2000);
+                clearTimeout(tTimeout);
+                tTimeout = setTimeout(() => t.classList.remove('show'), 2000);
             } else {
                 addMsg(data, 'in');
             }
@@ -181,7 +177,7 @@
         });
     }
 
-    function notifyTyping() { if(conn && conn.open) conn.send("###T"); }
+    function notifyTyping() { if(conn && conn.open) conn.send("TYPING"); }
 
     function addMsg(t, c, sys = false) {
         const d = document.createElement('div');
