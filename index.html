@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KIMPINTAY - FIX SEND</title>
+    <title>KIMPINTAY - FINAL FIX</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --p: #7b61ff; --bg: #0b0b0e; --panel: #16161e; --success: #00ff88; --gray: #444; }
         body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         
+        /* ВИЗУАЛ ШТОРКИ */
         .drawer { position: fixed; left: -300px; top: 0; width: 300px; height: 100%; background: #111; border-right: 1px solid #333; transition: 0.3s ease; z-index: 1000; padding: 20px; box-sizing: border-box; }
         .drawer.open { left: 0; box-shadow: 10px 0 50px rgba(0,0,0,0.8); }
         .drawer-handle { position: absolute; right: -30px; top: 50%; width: 30px; height: 60px; background: var(--p); border-radius: 0 10px 10px 0; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
@@ -17,72 +18,55 @@
         .contacts-bar { width: 350px; background: var(--panel); border-right: 1px solid #222; display: flex; flex-direction: column; }
         @media (max-width: 768px) { .contacts-bar { width: 100%; } .chat-main { display: none; } .chat-main.active { display: flex; position: fixed; inset: 0; z-index: 500; } }
 
-        .contacts-header { padding: 20px; font-weight: bold; font-size: 1.2rem; color: var(--p); border-bottom: 1px solid #222; }
-        .contacts-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .contact-card { padding: 15px; background: #1e1e26; border-radius: 12px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; }
-        
-        .fire { font-size: 20px; filter: grayscale(1); transition: 0.3s; opacity: 0.3; }
+        .contact-card { padding: 12px; background: #1e1e26; border-radius: 12px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; }
+        .fire { font-size: 18px; filter: grayscale(1); opacity: 0.3; transition: 0.3s; }
         .fire.online { filter: grayscale(0) hue-rotate(240deg); opacity: 1; text-shadow: 0 0 10px var(--p); }
+        .del-btn { color: #555; font-size: 20px; padding: 0 10px; }
 
         .chat-main { flex: 1; display: flex; flex-direction: column; background: #0b0b0d; }
-        .chat-header { padding: 15px 25px; border-bottom: 1px solid #222; background: #111; }
-        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gray); margin-right: 8px; }
-        .status-dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
-        
-        .typing-indicator { font-size: 12px; color: var(--p); height: 15px; margin-top: 4px; font-weight: bold; opacity: 0; }
-        .typing-indicator.show { opacity: 1; }
+        .chat-header { padding: 15px 25px; border-bottom: 1px solid #222; background: #111; display: flex; align-items: center; gap: 10px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gray); }
+        .status-dot.online { background: var(--success); box-shadow: 0 0 10px var(--success); }
 
         .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .m { padding: 12px 16px; border-radius: 18px; max-width: 75%; word-wrap: break-word; font-size: 15px; }
+        .m { padding: 12px 16px; border-radius: 18px; max-width: 75%; font-size: 15px; }
         .in { background: #222; align-self: flex-start; border-bottom-left-radius: 4px; }
         .out { background: var(--p); align-self: flex-end; border-bottom-right-radius: 4px; }
 
-        .input-area { padding: 20px; background: var(--panel); display: flex; gap: 10px; }
-        input { background: #1a1a22; border: 1px solid #333; color: white; padding: 12px; border-radius: 10px; outline: none; width: 100%; font-size: 16px; }
-        button { background: var(--p); border: none; color: white; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
-
-        .connect-panel { margin-top: 30px; padding: 15px; background: #000; border-radius: 12px; border: 1px solid #333; transition: 0.3s; }
-        .connect-panel.working { border-color: var(--p); background: rgba(123, 97, 255, 0.1); }
+        input, button { padding: 12px; border-radius: 10px; border: none; outline: none; }
+        input { background: #1a1a22; color: white; border: 1px solid #333; width: 100%; box-sizing: border-box; }
+        button { background: var(--p); color: white; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="drawer" class="drawer">
-        <div class="drawer-handle" onclick="toggleDrawer()">❯</div>
-        <h3 style="margin-top:0">Мой Профиль</h3>
-        <input type="text" id="reg-nick" placeholder="Никнейм">
-        <input type="password" id="reg-pass" placeholder="Пароль" style="margin-top:10px">
-        <button id="login-btn" onclick="startNetwork()" style="width:100%; margin-top:15px">ВОЙТИ</button>
-        
-        <div class="connect-panel" id="c-panel">
-            <div style="font-size:10px; color:#555; margin-bottom:5px">СОСТОЯНИЕ ЯДРА:</div>
-            <span id="my-status-dot" class="status-dot"></span> 
-            <span id="my-status-text" style="font-size:12px; font-weight:bold;">ОФФЛАЙН</span>
-            <div id="my-id-val" style="font-size:10px; color:var(--p); margin-top:10px; word-break:break-all; font-family:monospace; opacity:0.8"></div>
-        </div>
+        <div class="drawer-handle" onclick="document.getElementById('drawer').classList.toggle('open')">❯</div>
+        <h3>Профиль</h3>
+        <input type="text" id="reg-nick" placeholder="Ваш ник">
+        <button onclick="login()" style="width:100%; margin-top:10px">ВОЙТИ</button>
+        <div id="my-id-val" style="font-size:10px; color:var(--p); margin-top:15px; word-break:break-all; font-family:monospace;"></div>
     </div>
 
     <div class="app-container">
         <div class="contacts-bar">
-            <div class="contacts-header">Контакты</div>
+            <div style="padding:20px; font-weight:bold; color:var(--p)">KIMPINTAY</div>
             <div style="padding:15px">
-                <input type="text" id="add-id" placeholder="ID друга" style="font-size:12px">
+                <input type="text" id="add-id" placeholder="ID друга (kp-...)">
                 <button onclick="addFriend()" style="width:100%; margin-top:5px; font-size:12px">ДОБАВИТЬ</button>
             </div>
-            <div class="contacts-list" id="contacts-list"></div>
+            <div id="contacts-list" style="flex:1; overflow-y:auto; padding:10px"></div>
         </div>
 
         <div id="chat-win" class="chat-main">
             <div class="chat-header">
-                <div style="display:flex; align-items:center;">
-                    <span id="chat-status-dot" class="status-dot"></span>
-                    <b id="chat-name">Выберите диалог</b>
-                </div>
-                <div id="typing" class="typing-indicator">тыркает...</div>
+                <div id="chat-dot" class="status-dot"></div>
+                <b id="chat-name">Выберите чат</b>
+                <div id="typing" style="font-size:10px; color:var(--p); opacity:0">тыркает...</div>
             </div>
-            <div class="messages" id="msgs"></div>
-            <div class="input-area">
-                <input type="text" id="msg-input" placeholder="Напишите что-нибудь..." oninput="notifyTyping()">
+            <div id="msgs" class="messages"></div>
+            <div style="padding:20px; display:flex; gap:10px; background:var(--panel)">
+                <input type="text" id="msg-input" placeholder="Сообщение..." oninput="sendT()">
                 <button onclick="send()">➤</button>
             </div>
         </div>
@@ -90,60 +74,52 @@
 
 <script>
     let peer = null, conn = null, contacts = [];
-    let tTimeout;
 
-    function toggleDrawer() { document.getElementById('drawer').classList.toggle('open'); }
-
-    function startNetwork() {
+    // 1. УЛУЧШЕННАЯ РЕГИСТРАЦИЯ
+    function login() {
         const nick = document.getElementById('reg-nick').value.trim().toLowerCase();
         if(!nick) return;
-
-        const pBox = document.getElementById('c-panel');
-        const pText = document.getElementById('my-status-text');
         
-        pBox.classList.add('working');
-        pText.innerText = "ПОДКЛЮЧЕНИЕ...";
-        pText.style.color = "orange";
-
         if(peer) peer.destroy();
-
+        
+        // Используем несколько STUN серверов для пробивки мобильных сетей
         peer = new Peer('kp-' + nick, {
-            config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] },
-            debug: 1
+            config: { 'iceServers': [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ]}
         });
 
         peer.on('open', (id) => {
-            document.getElementById('my-status-dot').classList.add('online');
-            pText.innerText = "В СЕТИ";
-            pText.style.color = "var(--success)";
             document.getElementById('my-id-val').innerText = id;
-            setTimeout(toggleDrawer, 500);
+            document.getElementById('drawer').classList.remove('open');
             loadContacts();
         });
 
         peer.on('connection', (c) => {
             conn = c;
-            bindEvents();
+            setupConn();
         });
 
         peer.on('error', (err) => {
-            pText.innerText = "ОШИБКА: " + err.type;
-            pText.style.color = "red";
+            alert("Ошибка сети: " + err.type + ". Попробуйте другой ник.");
         });
     }
 
+    // 2. УМНАЯ ПРОВЕРКА КОНТАКТОВ И УДАЛЕНИЕ
     function addFriend() {
         const id = document.getElementById('add-id').value.trim();
-        if(id && !contacts.includes(id)) {
-            contacts.push(id);
-            localStorage.setItem('k_contacts_v3', JSON.stringify(contacts));
-            renderContacts();
+        if(id.startsWith('kp-')) {
+            if(!contacts.includes(id)) {
+                contacts.push(id);
+                localStorage.setItem('kp_contacts', JSON.stringify(contacts));
+                renderContacts();
+            }
+            document.getElementById('add-id').value = "";
+        } else {
+            alert("ID должен начинаться с kp-");
         }
-    }
-
-    function loadContacts() {
-        contacts = JSON.parse(localStorage.getItem('k_contacts_v3')) || [];
-        renderContacts();
     }
 
     function renderContacts() {
@@ -152,81 +128,92 @@
         contacts.forEach(id => {
             const div = document.createElement('div');
             div.className = 'contact-card';
-            const shortName = id.includes('-') ? id.split('-')[1].toUpperCase() : id;
-            div.innerHTML = `<div><b>${shortName}</b><br><small style="color:#555;font-size:9px">${id}</small></div>
-                             <div class="fire" id="fire-${id}">🔥</div>`;
+            div.innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px">
+                    <div class="fire" id="fire-${id}">🔥</div>
+                    <b>${id.replace('kp-','').toUpperCase()}</b>
+                </div>
+                <div class="del-btn" onclick="delContact('${id}', event)">×</div>
+            `;
             div.onclick = () => {
                 if(window.innerWidth <= 768) document.getElementById('chat-win').classList.add('active');
                 if(conn) conn.close();
-                // Создаем соединение с настройкой надежности
                 conn = peer.connect(id, { reliable: true });
-                bindEvents();
+                setupConn();
             };
             list.appendChild(div);
         });
     }
 
-    function bindEvents() {
-        // Ждем ПОЛНОГО открытия канала перед отправкой
+    function delContact(id, e) {
+        e.stopPropagation();
+        contacts = contacts.filter(c => c !== id);
+        localStorage.setItem('kp_contacts', JSON.stringify(contacts));
+        renderContacts();
+    }
+
+    function loadContacts() {
+        contacts = JSON.parse(localStorage.getItem('kp_contacts')) || [];
+        renderContacts();
+    }
+
+    // 3. ИСПРАВЛЕННАЯ ОТПРАВКА (ТЕСТ 1 / ТЕСТ 2)
+    function setupConn() {
         conn.on('open', () => {
-            const partner = conn.peer.includes('-') ? conn.peer.split('-')[1].toUpperCase() : conn.peer;
-            document.getElementById('chat-name').innerText = partner;
-            document.getElementById('chat-status-dot').classList.add('online');
-            const fire = document.getElementById('fire-' + conn.peer);
-            if(fire) fire.classList.add('online');
-            addMsg("СИСТЕМА: Чат открыт", "in", true);
+            document.getElementById('chat-name').innerText = conn.peer.replace('kp-','').toUpperCase();
+            document.getElementById('chat-dot').classList.add('online');
+            const f = document.getElementById('fire-' + conn.peer);
+            if(f) f.classList.add('online');
         });
 
         conn.on('data', (data) => {
-            if(data === "TYPING") {
-                const t = document.getElementById('typing');
-                t.classList.add('show');
-                clearTimeout(tTimeout);
-                tTimeout = setTimeout(() => t.classList.remove('show'), 2000);
+            if(data === "###T") {
+                document.getElementById('typing').style.opacity = 1;
+                setTimeout(() => document.getElementById('typing').style.opacity = 0, 2000);
             } else {
                 addMsg(data, 'in');
             }
         });
 
         conn.on('close', () => {
-            document.getElementById('chat-status-dot').classList.remove('online');
-            const fire = document.getElementById('fire-' + conn.peer);
-            if(fire) fire.classList.remove('online');
+            document.getElementById('chat-dot').classList.remove('online');
+            const f = document.getElementById('fire-' + conn.peer);
+            if(f) f.classList.remove('online');
         });
     }
 
-    function notifyTyping() { 
-        // Проверяем статус open перед отправкой сигнала тырканья
-        if(conn && conn.open) conn.send("TYPING"); 
-    }
-
-    function addMsg(t, c, sys = false) {
-        const d = document.createElement('div');
-        d.className = 'm ' + c;
-        if(sys) d.style = "background:transparent; color:#444; font-size:10px; align-self:center; margin:10px 0";
-        d.innerText = t;
-        const box = document.getElementById('msgs');
-        box.appendChild(d);
-        box.scrollTop = box.scrollHeight;
-    }
+    function sendT() { if(conn && conn.open) conn.send("###T"); }
 
     function send() {
         const i = document.getElementById('msg-input');
-        const text = i.value.trim();
-        
-        if(!text) return;
-        
-        if(conn && conn.open) {
-            try {
-                conn.send(text);
-                addMsg(text, 'out');
-                i.value = "";
-            } catch(e) {
-                addMsg("ОШИБКА: Попробуйте еще раз через секунду", "in", true);
-            }
-        } else {
-            addMsg("СИСТЕМА: Нет связи. Нажми на контакт еще раз.", "in", true);
+        const val = i.value.trim();
+        if(!val) return;
+
+        // Если это я сам себе
+        if(conn && conn.peer === peer.id) {
+            addMsg(val, 'out');
+            addMsg(val, 'in');
+            i.value = "";
+            return;
         }
+
+        if(conn && conn.open) {
+            conn.send(val);
+            addMsg(val, 'out');
+            i.value = "";
+        } else {
+            addMsg(val + " (ошибка: нет связи)", "out");
+            i.value = "";
+        }
+    }
+
+    function addMsg(t, type) {
+        const d = document.createElement('div');
+        d.className = 'm ' + type;
+        d.innerText = t;
+        const b = document.getElementById('msgs');
+        b.appendChild(d);
+        b.scrollTop = b.scrollHeight;
     }
 </script>
 </body>
