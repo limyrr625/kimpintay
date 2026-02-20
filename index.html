@@ -3,111 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kimpintay - Simple & Secure</title>
+    <title>Kimpintay - Chat</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        body { background: #0a0a0c; color: #fff; font-family: sans-serif; margin: 0; display: flex; height: 100vh; }
-        .sidebar { width: 260px; background: #111116; border-right: 1px solid #222; display: flex; flex-direction: column; }
-        .main { flex: 1; display: flex; flex-direction: column; }
-        .msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .m { max-width: 70%; padding: 10px; border-radius: 12px; font-size: 14px; }
-        .in { background: #222; align-self: flex-start; }
-        .out { background: #4a348b; align-self: flex-end; }
-        input { background: #1a1a20; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; outline: none; margin: 10px; }
-        button { background: #7b61ff; border: none; color: #fff; padding: 10px; border-radius: 8px; cursor: pointer; margin-right: 10px; }
-        .contact { padding: 10px; border-bottom: 1px solid #222; cursor: pointer; display: flex; justify-content: space-between; }
+        body { background: #0b0b0e; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; }
+        .sidebar { width: 300px; background: #16161e; border-right: 1px solid #333; display: flex; flex-direction: column; }
+        .main { flex: 1; display: flex; flex-direction: column; background: #0f0f12; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 70%; padding: 12px; border-radius: 15px; font-size: 15px; line-height: 1.4; }
+        .in { background: #22222e; align-self: flex-start; }
+        .out { background: #3d266e; align-self: flex-end; }
+        input { background: #1e1e26; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 10px; outline: none; margin: 10px; }
+        button { background: #7b61ff; border: none; color: #fff; padding: 10px 20px; border-radius: 10px; cursor: pointer; margin: 10px; font-weight: bold; }
+        .contact { padding: 15px; border-bottom: 1px solid #222; cursor: pointer; transition: 0.2s; }
+        .contact:hover { background: #22222e; }
+        .header { padding: 15px 25px; background: #16161e; border-bottom: 1px solid #333; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <div style="padding: 20px; font-weight: bold; color: #7b61ff;">KIMPINTAY</div>
-    <div id="login-block">
-        <input type="text" id="my-nick" placeholder="Твой ник...">
+    <div style="padding: 20px; font-size: 20px; font-weight: bold; color: #7b61ff;">Kimpintay</div>
+    <div id="auth">
+        <input type="text" id="my-id" placeholder="Введите ваш ник...">
     </div>
-    <div id="chat-block" style="display:none;">
-        <input type="text" id="friend-nick" placeholder="Ник друга...">
-        <div id="list"></div>
+    <div id="app-ui" style="display:none;">
+        <input type="text" id="friend-id" placeholder="Ник друга...">
+        <div style="padding: 10px; font-size: 12px; color: #666;">ВАШИ ЧАТЫ:</div>
+        <div id="contacts"></div>
     </div>
 </div>
 
 <div class="main">
-    <div id="h" style="padding: 15px; border-bottom: 1px solid #222;">Выберите чат</div>
-    <div class="msgs" id="box"></div>
-    <div style="display: flex; align-items: center;">
-        <input type="text" id="msg" style="flex:1;" placeholder="Сообщение...">
-        <button onclick="send()">Отправить</button>
+    <div class="header" id="chat-target">Выберите, кому написать</div>
+    <div class="messages" id="chat-box"></div>
+    <div style="display: flex; background: #16161e; padding: 5px;">
+        <input type="text" id="message-input" style="flex: 1;" placeholder="Напишите сообщение...">
+        <button onclick="sendMsg()">Отправить</button>
     </div>
 </div>
 
 <script>
-    let peer, conn, myId, friends = [];
+    let peer, conn, myNick, friends = [];
 
-    // Генерируем ключ на основе двух ников (авто-шифрование)
+    // Авто-ключ для шифрования (ник1 + ник2)
     function getSecret(id1, id2) {
-        return [id1, id2].sort().join('_');
+        return [id1, id2].sort().join('!');
     }
 
-    function render() {
-        const l = document.getElementById('list'); l.innerHTML = '';
+    function renderFriends() {
+        const list = document.getElementById('contacts');
+        list.innerHTML = '';
         friends.forEach(f => {
-            const d = document.createElement('div'); d.className = 'contact';
-            d.innerHTML = `<span>${f}</span><span onclick="event.stopPropagation();del('${f}')">×</span>`;
-            d.onclick = () => start(f);
-            l.appendChild(d);
+            const div = document.createElement('div');
+            div.className = 'contact';
+            div.innerText = f;
+            div.onclick = () => startChat(f);
+            list.appendChild(div);
         });
     }
 
-    function del(f) { friends = friends.filter(i => i !== f); localStorage.setItem('c_'+myId, JSON.stringify(friends)); render(); }
-
-    document.getElementById('my-nick').onkeypress = (e) => {
+    document.getElementById('my-id').onkeypress = (e) => {
         if (e.key === 'Enter' && e.target.value) {
-            myId = e.target.value.trim().toLowerCase();
-            peer = new Peer(myId);
+            myNick = e.target.value.trim().toLowerCase();
+            peer = new Peer(myNick);
             peer.on('open', () => {
-                document.getElementById('login-block').style.display = 'none';
-                document.getElementById('chat-block').style.display = 'block';
-                friends = JSON.parse(localStorage.getItem('c_'+myId)) || [];
-                render();
+                document.getElementById('auth').style.display = 'none';
+                document.getElementById('app-ui').style.display = 'block';
+                friends = JSON.parse(localStorage.getItem('chats_' + myNick)) || [];
+                renderFriends();
             });
-            peer.on('connection', (c) => { conn = c; listen(); });
+            peer.on('connection', (c) => { conn = c; setupConn(); });
         }
     };
 
-    function start(id) { if(conn) conn.close(); conn = peer.connect(id); listen(); }
+    function startChat(id) {
+        if(conn) conn.close();
+        conn = peer.connect(id);
+        setupConn();
+    }
 
-    document.getElementById('friend-nick').onkeypress = (e) => {
-        if (e.key === 'Enter' && e.target.value) { start(e.target.value.trim().toLowerCase()); e.target.value=''; }
+    document.getElementById('friend-id').onkeypress = (e) => {
+        if (e.key === 'Enter' && e.target.value) {
+            startChat(e.target.value.trim().toLowerCase());
+            e.target.value = '';
+        }
     };
 
-    function listen() {
+    function setupConn() {
         conn.on('open', () => {
-            document.getElementById('h').innerText = "Чат: " + conn.peer;
-            if(!friends.includes(conn.peer)) { friends.push(conn.peer); localStorage.setItem('c_'+myId, JSON.stringify(friends)); render(); }
-            document.getElementById('box').innerHTML = "";
+            document.getElementById('chat-target').innerText = "Чат с: " + conn.peer;
+            if(!friends.includes(conn.peer)) {
+                friends.push(conn.peer);
+                localStorage.setItem('chats_' + myNick, JSON.stringify(friends));
+                renderFriends();
+            }
+            document.getElementById('chat-box').innerHTML = "";
         });
-        conn.on('data', (d) => {
-            const secret = getSecret(myId, conn.peer);
+        conn.on('data', (data) => {
+            const secret = getSecret(myNick, conn.peer);
             try {
-                const dec = CryptoJS.AES.decrypt(d, secret).toString(CryptoJS.enc.Utf8);
-                show(dec || "[Ошибка]", 'in');
-            } catch(e) { show("!!!", 'in'); }
+                const dec = CryptoJS.AES.decrypt(data, secret).toString(CryptoJS.enc.Utf8);
+                addMsg(dec, 'in');
+            } catch(e) { console.error("Ошибка расшифровки"); }
         });
     }
 
-    function show(t, c) {
-        const m = document.createElement('div'); m.className = 'm ' + c; m.innerText = t;
-        const b = document.getElementById('box'); b.appendChild(m); b.scrollTop = b.scrollHeight;
+    function addMsg(text, type) {
+        const m = document.createElement('div');
+        m.className = 'msg ' + type;
+        m.innerText = text;
+        const box = document.getElementById('chat-box');
+        box.appendChild(m);
+        box.scrollTop = box.scrollHeight;
     }
 
-    function send() {
-        const i = document.getElementById('msg');
-        if(!i.value || !conn) return;
-        const secret = getSecret(myId, conn.peer);
-        const enc = CryptoJS.AES.encrypt(i.value, secret).toString();
-        conn.send(enc); show(i.value, 'out'); i.value = "";
+    function sendMsg() {
+        const input = document.getElementById('message-input');
+        if(!input.value || !conn) return;
+        const secret = getSecret(myNick, conn.peer);
+        const enc = CryptoJS.AES.encrypt(input.value, secret).toString();
+        conn.send(enc);
+        addMsg(input.value, 'out');
+        input.value = "";
     }
+
+    document.getElementById('message-input').onkeypress = (e) => { if(e.key === 'Enter') sendMsg(); };
 </script>
 </body>
 </html>
