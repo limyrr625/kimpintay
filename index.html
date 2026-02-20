@@ -3,22 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KIMPINTAY - FINAL FIX</title>
+    <title>KIMPINTAY - CLASSIC REG</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --p: #7b61ff; --bg: #0b0b0e; --panel: #16161e; --success: #00ff88; --gray: #444; }
         body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         
-        /* ВИЗУАЛ ШТОРКИ */
+        /* ШТОРКА */
         .drawer { position: fixed; left: -300px; top: 0; width: 300px; height: 100%; background: #111; border-right: 1px solid #333; transition: 0.3s ease; z-index: 1000; padding: 20px; box-sizing: border-box; }
         .drawer.open { left: 0; box-shadow: 10px 0 50px rgba(0,0,0,0.8); }
         .drawer-handle { position: absolute; right: -30px; top: 50%; width: 30px; height: 60px; background: var(--p); border-radius: 0 10px 10px 0; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+
+        /* ПЛАШКА РЕГИСТРАЦИИ (ВОЗВРАЩЕНА) */
+        .connect-panel { margin-top: 30px; padding: 15px; background: #000; border-radius: 12px; border: 1px solid #333; transition: 0.3s; }
+        .connect-panel.working { border-color: var(--p); background: rgba(123, 97, 255, 0.1); }
 
         .app-container { display: flex; width: 100vw; height: 100vh; }
         .contacts-bar { width: 350px; background: var(--panel); border-right: 1px solid #222; display: flex; flex-direction: column; }
         @media (max-width: 768px) { .contacts-bar { width: 100%; } .chat-main { display: none; } .chat-main.active { display: flex; position: fixed; inset: 0; z-index: 500; } }
 
-        .contact-card { padding: 12px; background: #1e1e26; border-radius: 12px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; }
+        .contact-card { padding: 12px; background: #1e1e26; border-radius: 12px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .fire { font-size: 18px; filter: grayscale(1); opacity: 0.3; transition: 0.3s; }
         .fire.online { filter: grayscale(0) hue-rotate(240deg); opacity: 1; text-shadow: 0 0 10px var(--p); }
         .del-btn { color: #555; font-size: 20px; padding: 0 10px; }
@@ -42,10 +46,16 @@
 
     <div id="drawer" class="drawer">
         <div class="drawer-handle" onclick="document.getElementById('drawer').classList.toggle('open')">❯</div>
-        <h3>Профиль</h3>
+        <h3 style="margin-top:0">Профиль</h3>
         <input type="text" id="reg-nick" placeholder="Ваш ник">
         <button onclick="login()" style="width:100%; margin-top:10px">ВОЙТИ</button>
-        <div id="my-id-val" style="font-size:10px; color:var(--p); margin-top:15px; word-break:break-all; font-family:monospace;"></div>
+        
+        <div class="connect-panel" id="c-panel">
+            <div style="font-size:10px; color:#555; margin-bottom:5px">СТАТУС:</div>
+            <span id="my-status-dot" class="status-dot"></span> 
+            <span id="my-status-text" style="font-size:12px; font-weight:bold;">ОФФЛАЙН</span>
+            <div id="my-id-val" style="font-size:10px; color:var(--p); margin-top:10px; word-break:break-all; font-family:monospace; opacity:0.8"></div>
+        </div>
     </div>
 
     <div class="app-container">
@@ -62,7 +72,7 @@
             <div class="chat-header">
                 <div id="chat-dot" class="status-dot"></div>
                 <b id="chat-name">Выберите чат</b>
-                <div id="typing" style="font-size:10px; color:var(--p); opacity:0">тыркает...</div>
+                <div id="typing" style="font-size:10px; color:var(--p); opacity:0; margin-left:10px">тыркает...</div>
             </div>
             <div id="msgs" class="messages"></div>
             <div style="padding:20px; display:flex; gap:10px; background:var(--panel)">
@@ -74,26 +84,34 @@
 
 <script>
     let peer = null, conn = null, contacts = [];
+    let tTimeout;
 
-    // 1. УЛУЧШЕННАЯ РЕГИСТРАЦИЯ
     function login() {
         const nick = document.getElementById('reg-nick').value.trim().toLowerCase();
         if(!nick) return;
+
+        const pBox = document.getElementById('c-panel');
+        const pText = document.getElementById('my-status-text');
         
+        pBox.classList.add('working');
+        pText.innerText = "ПОДКЛЮЧЕНИЕ...";
+        pText.style.color = "orange";
+
         if(peer) peer.destroy();
-        
-        // Используем несколько STUN серверов для пробивки мобильных сетей
+
         peer = new Peer('kp-' + nick, {
             config: { 'iceServers': [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' }
+                { urls: 'stun:stun1.l.google.com:19302' }
             ]}
         });
 
         peer.on('open', (id) => {
+            document.getElementById('my-status-dot').classList.add('online');
+            pText.innerText = "В СЕТИ";
+            pText.style.color = "var(--success)";
             document.getElementById('my-id-val').innerText = id;
-            document.getElementById('drawer').classList.remove('open');
+            setTimeout(() => document.getElementById('drawer').classList.remove('open'), 600);
             loadContacts();
         });
 
@@ -103,22 +121,21 @@
         });
 
         peer.on('error', (err) => {
-            alert("Ошибка сети: " + err.type + ". Попробуйте другой ник.");
+            pText.innerText = "ОШИБКА";
+            pText.style.color = "red";
+            console.error(err);
         });
     }
 
-    // 2. УМНАЯ ПРОВЕРКА КОНТАКТОВ И УДАЛЕНИЕ
     function addFriend() {
         const id = document.getElementById('add-id').value.trim();
         if(id.startsWith('kp-')) {
             if(!contacts.includes(id)) {
                 contacts.push(id);
-                localStorage.setItem('kp_contacts', JSON.stringify(contacts));
+                localStorage.setItem('kp_contacts_fix', JSON.stringify(contacts));
                 renderContacts();
             }
             document.getElementById('add-id').value = "";
-        } else {
-            alert("ID должен начинаться с kp-");
         }
     }
 
@@ -148,16 +165,15 @@
     function delContact(id, e) {
         e.stopPropagation();
         contacts = contacts.filter(c => c !== id);
-        localStorage.setItem('kp_contacts', JSON.stringify(contacts));
+        localStorage.setItem('kp_contacts_fix', JSON.stringify(contacts));
         renderContacts();
     }
 
     function loadContacts() {
-        contacts = JSON.parse(localStorage.getItem('kp_contacts')) || [];
+        contacts = JSON.parse(localStorage.getItem('kp_contacts_fix')) || [];
         renderContacts();
     }
 
-    // 3. ИСПРАВЛЕННАЯ ОТПРАВКА (ТЕСТ 1 / ТЕСТ 2)
     function setupConn() {
         conn.on('open', () => {
             document.getElementById('chat-name').innerText = conn.peer.replace('kp-','').toUpperCase();
@@ -168,8 +184,10 @@
 
         conn.on('data', (data) => {
             if(data === "###T") {
-                document.getElementById('typing').style.opacity = 1;
-                setTimeout(() => document.getElementById('typing').style.opacity = 0, 2000);
+                const t = document.getElementById('typing');
+                t.style.opacity = 1;
+                clearTimeout(tTimeout);
+                tTimeout = setTimeout(() => t.style.opacity = 0, 2000);
             } else {
                 addMsg(data, 'in');
             }
@@ -189,7 +207,7 @@
         const val = i.value.trim();
         if(!val) return;
 
-        // Если это я сам себе
+        // Фикс чата с самим собой
         if(conn && conn.peer === peer.id) {
             addMsg(val, 'out');
             addMsg(val, 'in');
@@ -202,8 +220,7 @@
             addMsg(val, 'out');
             i.value = "";
         } else {
-            addMsg(val + " (ошибка: нет связи)", "out");
-            i.value = "";
+            addMsg("Ошибка: нет соединения (горит ли огонь?)", "in");
         }
     }
 
