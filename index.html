@@ -3,179 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KIMPINTAY PRO</title>
+    <title>KIMPINTAY - Swipe Edition</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        :root { --p: #7b61ff; --bg: #0b0b0e; }
-        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; }
-        .app { width: 95%; max-width: 1000px; height: 90vh; background: #16161e; display: flex; border-radius: 24px; border: 1px solid #333; overflow: hidden; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
-        .sidebar { width: 300px; background: #111; border-right: 1px solid #333; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
-        .main { flex: 1; display: flex; flex-direction: column; background: #0b0b0d; }
-        .msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .m { padding: 12px 16px; border-radius: 16px; max-width: 80%; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
-        .in { background: #25252b; align-self: flex-start; border-bottom-left-radius: 4px; }
-        .out { background: var(--p); align-self: flex-end; border-bottom-right-radius: 4px; }
-        input { width: 100%; background: #1a1a22; border: 1px solid #333; padding: 12px; border-radius: 12px; color: white; margin-bottom: 12px; box-sizing: border-box; outline: none; font-size: 16px; }
-        button { width: 100%; background: var(--p); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:active { transform: scale(0.98); }
-        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
-        #log { font-size: 11px; color: #666; margin-top: 10px; font-family: monospace; }
+        :root { --p: #7b61ff; --bg: #0b0b0e; --panel: #16161e; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
+        
+        /* Шторка регистрации */
+        .drawer { position: fixed; left: -300px; top: 0; width: 300px; height: 100%; background: #111; border-right: 1px solid #333; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; padding: 20px; box-sizing: border-box; }
+        .drawer.open { left: 0; box-shadow: 10px 0 50px rgba(0,0,0,0.8); }
+        .drawer-handle { position: absolute; right: -30px; top: 50%; width: 30px; height: 60px; background: var(--p); border-radius: 0 10px 10px 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        .app-container { display: flex; width: 100vw; height: 100vh; }
+
+        /* Список контактов */
+        .contacts-bar { width: 350px; background: var(--panel); border-right: 1px solid #222; display: flex; flex-direction: column; }
+        .contacts-header { padding: 20px; font-weight: bold; font-size: 1.2rem; color: var(--p); border-bottom: 1px solid #222; }
+        .contacts-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .contact-card { padding: 15px; background: #1e1e26; border-radius: 12px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
+        .contact-card:hover { border-color: var(--p); background: #252530; }
+        .contact-card .id { font-size: 10px; color: #666; font-family: monospace; }
+
+        /* Окно чата */
+        .chat-main { flex: 1; display: flex; flex-direction: column; background: #0b0b0d; }
+        .chat-header { padding: 15px 25px; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 10px; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .m { padding: 10px 15px; border-radius: 15px; max-width: 70%; line-height: 1.4; word-wrap: break-word; }
+        .in { background: #222; align-self: flex-start; }
+        .out { background: var(--p); align-self: flex-end; }
+
+        /* Инпуты */
+        .input-area { padding: 20px; background: var(--panel); display: flex; gap: 10px; }
+        input { background: #1a1a22; border: 1px solid #333; color: white; padding: 12px; border-radius: 10px; outline: none; width: 100%; }
+        button { background: var(--p); border: none; color: white; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        
+        #status-info { font-size: 11px; margin-top: 20px; color: #555; }
     </style>
 </head>
 <body>
 
-<div class="app">
-    <div class="sidebar">
-        <h2 style="color:var(--p); margin:0 0 20px 0;">KIMPINTAY</h2>
-        
-        <div id="auth-panel">
-            <input type="text" id="nick" placeholder="Никнейм">
-            <input type="password" id="pass" placeholder="Пароль">
-            <button onclick="startSession()">ЗАРЕГИСТРИРОВАТЬСЯ / ВОЙТИ</button>
-        </div>
+    <div id="drawer" class="drawer">
+        <div class="drawer-handle" onclick="toggleDrawer()">❯</div>
+        <h3>Аккаунт</h3>
+        <input type="text" id="reg-nick" placeholder="Никнейм" style="margin-bottom:10px">
+        <input type="password" id="reg-pass" placeholder="Пароль" style="margin-bottom:15px">
+        <button onclick="login()" style="width:100%">ВОЙТИ</button>
+        <div id="status-info">● Статус: Оффлайн</div>
+        <div id="my-full-id" style="margin-top:20px; font-size:10px; color:var(--p); word-break:break-all"></div>
+    </div>
 
-        <div id="chat-panel" style="display:none;">
-            <div style="background: rgba(123,97,255,0.1); padding:10px; border-radius:10px; border:1px solid var(--p); margin-bottom:15px;">
-                <div style="font-size:10px; color:#888;">ВАШ СЕТЕВОЙ ID:</div>
-                <div id="my-id" style="font-size:13px; font-weight:bold; color:var(--p); word-break:break-all;"></div>
+    <div class="app-container">
+        <div class="contacts-bar">
+            <div class="contacts-header">Контакты</div>
+            <div style="padding:10px">
+                <input type="text" id="target-id" placeholder="ID друга для добавления" style="font-size:12px">
+                <button onclick="addContact()" style="width:100%; margin-top:5px; font-size:12px">ДОБАВИТЬ</button>
             </div>
-            <input type="text" id="target-id" placeholder="ID друга">
-            <button onclick="connectToFriend()">ОТКРЫТЬ ЧАТ</button>
+            <div class="contacts-list" id="contacts-list">
+                </div>
         </div>
 
-        <div id="status-area" style="margin-top:auto; font-size:12px;">
-            <span id="dot" class="status-dot" style="background:gray;"></span>
-            <span id="status-text">Оффлайн</span>
-            <div id="log"></div>
+        <div class="chat-main">
+            <div class="chat-header" id="chat-title">Выберите контакт</div>
+            <div class="messages" id="msgs"></div>
+            <div class="input-area">
+                <input type="text" id="msg-input" placeholder="Напишите сообщение...">
+                <button onclick="send()">➤</button>
+            </div>
         </div>
     </div>
-
-    <div class="main">
-        <div id="chat-header" style="padding:15px; border-bottom:1px solid #222; font-weight:bold; color:#888;">Ожидание подключения...</div>
-        <div class="msgs" id="msg-box"></div>
-        <div style="padding:15px; display:flex; gap:10px; background:#16161e;">
-            <input type="text" id="msg-input" style="margin:0;" placeholder="Введите сообщение...">
-            <button onclick="send()" style="width:60px; padding:0;">➤</button>
-        </div>
-    </div>
-</div>
 
 <script>
-    let peer = null, conn = null, myPassword = "";
+    let peer, conn, myId, contacts = [];
 
-    function setStatus(text, color) {
-        document.getElementById('status-text').innerText = text;
-        document.getElementById('dot').style.background = color;
+    // Открытие/закрытие шторки
+    function toggleDrawer() {
+        document.getElementById('drawer').classList.toggle('open');
+        const handle = document.querySelector('.drawer-handle');
+        handle.innerText = handle.innerText === '❯' ? '❮' : '❯';
     }
 
-    function writeLog(msg) {
-        const log = document.getElementById('log');
-        log.innerText = "> " + msg;
-    }
+    function login() {
+        const nick = document.getElementById('reg-nick').value.trim().toLowerCase();
+        const pass = document.getElementById('reg-pass').value.trim();
+        if(!nick || !pass) return alert("Введите данные!");
 
-    function startSession() {
-        const nick = document.getElementById('nick').value.trim().toLowerCase();
-        const pass = document.getElementById('pass').value.trim();
-        if(!nick || !pass) return alert("Введите ник и пароль!");
+        // Локальная проверка
+        const saved = localStorage.getItem('p_' + nick);
+        if(saved && saved !== pass) return alert("Неверный пароль!");
+        if(!saved) localStorage.setItem('p_' + nick, pass);
 
-        // Локальная проверка пароля
-        const saved = localStorage.getItem('_kp_p_' + nick);
-        if(saved && saved !== pass) return alert("Неверный пароль для этого ника!");
-        if(!saved) localStorage.setItem('_kp_p_' + nick, pass);
-
-        myPassword = pass;
-        const finalID = "kp-" + nick + "-" + CryptoJS.MD5(pass).toString().substring(0, 4);
-
-        writeLog("Подключение к облаку...");
-        setStatus("Подключение...", "orange");
-
-        // Ультра-стабильные настройки
-        peer = new Peer(finalID, {
-            debug: 2,
-            secure: true,
-            config: {
-                'iceServers': [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
-                ]
-            }
+        myId = "kp-" + nick;
+        peer = new Peer(myId, {
+            config: {'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }]}
         });
 
         peer.on('open', (id) => {
-            writeLog("Успешно в сети");
-            setStatus("Онлайн", "#00ff88");
-            document.getElementById('auth-panel').style.display = 'none';
-            document.getElementById('chat-panel').style.display = 'block';
-            document.getElementById('my-id').innerText = id;
+            document.getElementById('status-info').innerText = "● ОНЛАЙН: " + nick;
+            document.getElementById('my-full-id').innerText = "ВАШ ID: " + id;
+            toggleDrawer();
+            loadContacts();
         });
 
-        peer.on('connection', (c) => {
-            conn = c;
-            initChat();
-        });
-
-        peer.on('error', (err) => {
-            writeLog("Ошибка: " + err.type);
-            if(err.type === 'unavailable-id') {
-                setStatus("ID занят. Ждите 10с", "red");
-            } else if(err.type === 'network') {
-                setStatus("Ошибка сети", "red");
-            }
-        });
-
-        peer.on('disconnected', () => {
-            writeLog("Связь с сервером потеряна. Переподключение...");
-            peer.reconnect();
+        peer.on('connection', (incoming) => {
+            conn = incoming;
+            setupConn();
         });
     }
 
-    function connectToFriend() {
-        const tid = document.getElementById('target-id').value.trim();
-        if(!tid) return;
-        writeLog("Ищу друга: " + tid);
+    function loadContacts() {
+        contacts = JSON.parse(localStorage.getItem('contacts_' + myId)) || [];
+        renderContacts();
+    }
+
+    function addContact() {
+        const id = document.getElementById('target-id').value.trim();
+        if(!id || contacts.includes(id)) return;
+        contacts.push(id);
+        localStorage.setItem('contacts_' + myId, JSON.stringify(contacts));
+        renderContacts();
+        document.getElementById('target-id').value = "";
+    }
+
+    function renderContacts() {
+        const list = document.getElementById('contacts-list');
+        list.innerHTML = '';
+        contacts.forEach(cid => {
+            const div = document.createElement('div');
+            div.className = 'contact-card';
+            div.innerHTML = `<div class="name">${cid.split('-')[1]}</div><div class="id">${cid}</div>`;
+            div.onclick = () => startChat(cid);
+            list.appendChild(div);
+        });
+    }
+
+    function startChat(id) {
         if(conn) conn.close();
-        conn = peer.connect(tid, { reliable: true });
-        initChat();
+        conn = peer.connect(id);
+        setupConn();
     }
 
-    function initChat() {
+    function setupConn() {
         conn.on('open', () => {
-            writeLog("Друг найден. Чат готов.");
-            document.getElementById('chat-header').innerText = "Чат с: " + conn.peer;
-            addMsg("СИСТЕМА: Соединение установлено.", "in");
+            document.getElementById('chat-title').innerText = "Чат с: " + conn.peer;
+            document.getElementById('msgs').innerHTML = '<div style="text-align:center; color:#555; font-size:10px">Соединение установлено</div>';
         });
-
         conn.on('data', (data) => {
-            try {
-                const dec = CryptoJS.AES.decrypt(data, myPassword).toString(CryptoJS.enc.Utf8);
-                if(dec) addMsg(dec, "in");
-            } catch(e) { 
-                addMsg("ОШИБКА: Собеседник использует другой пароль!", "in"); 
-            }
-        });
-
-        conn.on('close', () => {
-            writeLog("Друг вышел из чата.");
-            addMsg("СИСТЕМА: Собеседник отключился.", "in");
+            addMsg(data, 'in');
         });
     }
 
     function addMsg(t, c) {
-        const b = document.getElementById('msg-box');
         const d = document.createElement('div');
         d.className = 'm ' + c;
         d.innerText = t;
-        b.appendChild(d);
-        b.scrollTop = b.scrollHeight;
+        const box = document.getElementById('msgs');
+        box.appendChild(d);
+        box.scrollTop = box.scrollHeight;
     }
 
     function send() {
         const input = document.getElementById('msg-input');
-        if(!input.value || !conn || !conn.open) return;
-        const enc = CryptoJS.AES.encrypt(input.value, myPassword).toString();
-        conn.send(enc);
-        addMsg(input.value, "out");
+        if(!input.value || !conn) return;
+        conn.send(input.value);
+        addMsg(input.value, 'out');
         input.value = "";
     }
 </script>
